@@ -1,0 +1,75 @@
+openapi: 3.1.0
+info:
+  title: Calculate Urgency SLA
+  version: 1.0.0
+  description: Calculate SLA deadline and priority based on referral urgency level
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/calculate-urgency-sla:
+    post:
+      operationId: calculateUrgencySla
+      summary: Calculate SLA deadline for referral based on urgency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - urgency_level
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier
+                urgency_level:
+                  type: string
+                  description: Urgency level (Emergency, Urgent, Routine)
+                  enum:
+                    - Emergency
+                    - Urgent
+                    - Routine
+                referral_created_at:
+                  type: string
+                  description: Timestamp when referral was created
+                specialty_type:
+                  type: string
+                  description: Type of specialist consultation
+      responses:
+        '200':
+          description: SLA deadline calculated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - referral_id
+                  - urgency_level
+                  - sla_deadline
+                  - priority_score
+                properties:
+                  referral_id:
+                    type: string
+                  urgency_level:
+                    type: string
+                  sla_deadline:
+                    type: string
+                    description: ISO 8601 timestamp for SLA deadline
+                  priority_score:
+                    type: integer
+                    description: Priority score (1-10, 10 being highest)
+                  time_remaining_hours:
+                    type: integer
+                    description: Hours remaining until SLA breach
+                  acknowledgment_deadline:
+                    type: string
+                    description: Deadline for specialist to acknowledge
+                  escalation_required:
+                    type: boolean
+                    description: Whether immediate escalation is needed
+                  calculated_at:
+                    type: string
+                    description: Timestamp when calculation was performed

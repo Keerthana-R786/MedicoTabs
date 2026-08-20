@@ -1,0 +1,82 @@
+openapi: 3.1.0
+info:
+  title: Book Appointment
+  version: 1.0.0
+  description: Schedule specialist appointment and confirm booking
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/book-appointment:
+    post:
+      operationId: bookAppointment
+      summary: Book appointment with specialist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - patient_id
+                - specialist_id
+                - slot_id
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                specialist_id:
+                  type: string
+                  description: Specialist doctor identifier
+                slot_id:
+                  type: string
+                  description: Selected time slot identifier
+                appointment_date:
+                  type: string
+                  description: Appointment date
+                appointment_time:
+                  type: string
+                  description: Appointment time
+                notes:
+                  type: string
+                  description: Additional appointment notes
+      responses:
+        '200':
+          description: Appointment booked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - appointment_id
+                  - referral_id
+                  - status
+                  - confirmation_number
+                properties:
+                  appointment_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  patient_id:
+                    type: string
+                  specialist_id:
+                    type: string
+                  specialist_name:
+                    type: string
+                  status:
+                    type: string
+                  confirmation_number:
+                    type: string
+                  appointment_date:
+                    type: string
+                  appointment_time:
+                    type: string
+                  location:
+                    type: string
+                  booked_at:
+                    type: string

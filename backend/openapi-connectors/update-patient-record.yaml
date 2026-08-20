@@ -1,0 +1,78 @@
+openapi: 3.1.0
+info:
+  title: Update Patient Record
+  version: 1.0.0
+  description: Write back workflow results and updates to patient EHR record
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/update-patient-record:
+    post:
+      operationId: updatePatientRecord
+      summary: Update patient EHR with workflow results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - patient_id
+                - referral_id
+                - update_type
+              properties:
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                referral_id:
+                  type: string
+                  description: Referral identifier
+                update_type:
+                  type: string
+                  description: Type of update (appointment, coverage, status)
+                appointment_details:
+                  type: object
+                  properties:
+                    appointment_id:
+                      type: string
+                    specialist_name:
+                      type: string
+                    date:
+                      type: string
+                    time:
+                      type: string
+                coverage_status:
+                  type: object
+                  properties:
+                    verified:
+                      type: boolean
+                    details:
+                      type: string
+                clinical_notes:
+                  type: string
+                  description: Clinical notes to add to record
+      responses:
+        '200':
+          description: Patient record updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - patient_id
+                  - referral_id
+                  - status
+                  - updated_at
+                properties:
+                  patient_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  status:
+                    type: string
+                  updated_at:
+                    type: string
+                  update_summary:
+                    type: string

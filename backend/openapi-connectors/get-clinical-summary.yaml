@@ -1,0 +1,65 @@
+openapi: 3.1.0
+info:
+  title: Get Clinical Summary
+  version: 1.0.0
+  description: Retrieve clinical summary and diagnosis information for referral letter generation
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/get-clinical-summary:
+    post:
+      operationId: getClinicalSummary
+      summary: Get patient clinical summary for referral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - patient_id
+                - referral_id
+              properties:
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                referral_id:
+                  type: string
+                  description: Referral identifier
+      responses:
+        '200':
+          description: Clinical summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - patient_id
+                  - referral_id
+                  - chief_complaint
+                  - clinical_findings
+                properties:
+                  patient_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  chief_complaint:
+                    type: string
+                  clinical_findings:
+                    type: string
+                  diagnosis:
+                    type: string
+                  treatment_history:
+                    type: string
+                  reason_for_referral:
+                    type: string
+                  urgency_level:
+                    type: string
+                  requested_specialty:
+                    type: string
+                  primary_doctor_name:
+                    type: string
+                  primary_organization:
+                    type: string

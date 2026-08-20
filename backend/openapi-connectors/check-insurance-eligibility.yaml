@@ -1,0 +1,71 @@
+openapi: 3.1.0
+info:
+  title: Check Insurance Eligibility
+  version: 1.0.0
+  description: Verify patient insurance coverage and eligibility for specialist consultation
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/check-insurance-eligibility:
+    post:
+      operationId: checkInsuranceEligibility
+      summary: Verify insurance coverage for referral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - patient_id
+                - referral_id
+                - insurance_provider
+                - insurance_id
+              properties:
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                referral_id:
+                  type: string
+                  description: Referral identifier
+                insurance_provider:
+                  type: string
+                  description: Insurance company name
+                insurance_id:
+                  type: string
+                  description: Patient insurance member ID
+                specialty_type:
+                  type: string
+                  description: Type of specialist consultation
+      responses:
+        '200':
+          description: Insurance eligibility check completed
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - referral_id
+                  - is_eligible
+                  - coverage_status
+                properties:
+                  referral_id:
+                    type: string
+                  patient_id:
+                    type: string
+                  is_eligible:
+                    type: boolean
+                  coverage_status:
+                    type: string
+                  copay_amount:
+                    type: number
+                  prior_auth_required:
+                    type: boolean
+                  coverage_details:
+                    type: string
+                  verified_at:
+                    type: string
+                  eligibility_message:
+                    type: string

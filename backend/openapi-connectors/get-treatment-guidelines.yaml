@@ -1,0 +1,74 @@
+openapi: 3.1.0
+info:
+  title: Get Treatment Guidelines
+  version: 1.0.0
+  description: Retrieve clinical decision support and treatment guidelines for diagnosis
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/get-treatment-guidelines:
+    post:
+      operationId: getTreatmentGuidelines
+      summary: Retrieve evidence-based treatment protocols
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - diagnosis
+                - specialty
+              properties:
+                diagnosis:
+                  type: string
+                  description: Clinical diagnosis or condition
+                specialty:
+                  type: string
+                  description: Medical specialty context
+                patient_age:
+                  type: integer
+                  description: Patient age for age-specific guidelines
+                comorbidities:
+                  type: array
+                  items:
+                    type: string
+                  description: List of patient comorbidities
+      responses:
+        '200':
+          description: Treatment guidelines retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - diagnosis
+                  - guidelines
+                properties:
+                  diagnosis:
+                    type: string
+                  specialty:
+                    type: string
+                  guidelines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        guideline_id:
+                          type: string
+                        title:
+                          type: string
+                        source:
+                          type: string
+                        recommendation:
+                          type: string
+                        evidence_level:
+                          type: string
+                  clinical_notes:
+                    type: string
+                  references:
+                    type: array
+                    items:
+                      type: string
