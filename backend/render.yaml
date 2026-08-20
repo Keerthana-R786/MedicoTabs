@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: medicotabs-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    rootDir: backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: YOXA_TRIGGER_URL
+        sync: false
+      - key: YOXA_DEPLOYMENT_SECRET
+        sync: false
+      - key: YOXA_DEPLOYMENT_ID
+        sync: false
+      - key: YOXA_API_BASE
+        sync: false
+      - key: YOXA_HITL_WEBHOOK_SIGNING_SECRET
+        sync: false
+      - key: YOXA_HITL_RESPONSE_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:3000
+      - key: WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS
+        value: 300
