@@ -1,0 +1,84 @@
+openapi: 3.1.0
+info:
+  title: Coordinator Escalation Alert
+  version: 1.0.0
+  description: Send escalation alert to care coordinator for high-priority referrals requiring immediate attention
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/coordinator-escalation-alert:
+    post:
+      operationId: coordinatorEscalationAlert
+      summary: Alert care coordinator for urgent referral escalation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - urgency_level
+                - escalation_reason
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                patient_name:
+                  type: string
+                  description: Patient full name
+                urgency_level:
+                  type: string
+                  description: Urgency level triggering escalation
+                  enum:
+                    - Emergency
+                    - Urgent
+                escalation_reason:
+                  type: string
+                  description: Reason for coordinator escalation
+                specialty_required:
+                  type: string
+                  description: Specialty consultation needed
+                sla_deadline:
+                  type: string
+                  description: SLA deadline timestamp
+                coordinator_id:
+                  type: string
+                  description: Assigned care coordinator ID
+      responses:
+        '200':
+          description: Escalation alert sent successfully to coordinator
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - alert_id
+                  - referral_id
+                  - coordinator_notified
+                  - status
+                properties:
+                  alert_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  coordinator_id:
+                    type: string
+                  coordinator_notified:
+                    type: boolean
+                  status:
+                    type: string
+                  alert_sent_at:
+                    type: string
+                  notification_channels:
+                    type: array
+                    items:
+                      type: string
+                    description: Channels used (email, sms, pager)
+                  acknowledgment_required:
+                    type: boolean

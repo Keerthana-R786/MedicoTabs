@@ -463,7 +463,51 @@ router.post('/generate-prior-auth', async (req, res) => {
   }
 });
 
-// 12. Notify Patient
+// 12. Coordinator Escalation Alert
+router.post('/coordinator-escalation-alert', async (req, res) => {
+  try {
+    const {
+      referral_id,
+      patient_id,
+      patient_name,
+      urgency_level,
+      escalation_reason,
+      specialty_required,
+      sla_deadline,
+      coordinator_id
+    } = req.body;
+
+    const alertId = `ESC-${Date.now()}`;
+
+    // Send notification to coordinator
+    await supabase
+      .from('notifications')
+      .insert({
+        userId: coordinator_id || 'coordinator-001',
+        type: 'escalation',
+        title: `URGENT: ${urgency_level} Referral Escalation`,
+        message: `Referral ${referral_id} for ${patient_name} requires immediate attention. Reason: ${escalation_reason}. Specialty: ${specialty_required}. SLA Deadline: ${sla_deadline}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+    res.json({
+      alert_id: alertId,
+      referral_id,
+      coordinator_id: coordinator_id || 'coordinator-001',
+      coordinator_notified: true,
+      status: 'escalated',
+      alert_sent_at: new Date().toISOString(),
+      notification_channels: ['email', 'sms', 'portal'],
+      acknowledgment_required: urgency_level === 'Emergency'
+    });
+  } catch (error) {
+    console.error('Coordinator escalation alert error:', error);
+    res.status(500).json({ error: 'Failed to send escalation alert' });
+  }
+});
+
+// 13. Notify Patient
 router.post('/notify-patient', async (req, res) => {
   try {
     const { 
