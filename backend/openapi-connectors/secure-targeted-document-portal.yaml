@@ -1,0 +1,78 @@
+openapi: 3.1.0
+info:
+  title: Secure Targeted Document Portal
+  version: 1.0.0
+  description: Securely share and exchange clinical documents between providers through protected portal
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/secure-targeted-document-portal:
+    post:
+      operationId: secureTargetedDocumentPortal
+      summary: Share documents through secure portal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - document_ids
+                - recipient_id
+              properties:
+                referral_id:
+                  type: string
+                  description: Associated referral identifier
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                document_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: List of document IDs to share
+                recipient_id:
+                  type: string
+                  description: Receiving provider identifier
+                sender_id:
+                  type: string
+                  description: Sending provider identifier
+                access_expiration:
+                  type: string
+                  description: When portal access expires
+                require_acknowledgment:
+                  type: boolean
+                  description: Whether recipient must acknowledge receipt
+      responses:
+        '200':
+          description: Documents shared successfully through secure portal
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - portal_session_id
+                  - referral_id
+                  - status
+                properties:
+                  portal_session_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  documents_shared:
+                    type: integer
+                  status:
+                    type: string
+                  portal_url:
+                    type: string
+                  access_token:
+                    type: string
+                  shared_at:
+                    type: string
+                  expires_at:
+                    type: string
+                  encryption_enabled:
+                    type: boolean

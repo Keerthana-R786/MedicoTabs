@@ -1,0 +1,81 @@
+openapi: 3.1.0
+info:
+  title: Patient Re-engagement Nudge
+  version: 1.0.0
+  description: Send reminder or follow-up notification to patient for missed appointment or required action
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/patient-reengagement-nudge:
+    post:
+      operationId: patientReengagementNudge
+      summary: Send patient re-engagement reminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - patient_id
+                - referral_id
+                - nudge_type
+              properties:
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                referral_id:
+                  type: string
+                  description: Associated referral identifier
+                nudge_type:
+                  type: string
+                  description: Type of re-engagement
+                  enum:
+                    - missed_appointment
+                    - pending_scheduling
+                    - incomplete_paperwork
+                    - follow_up_required
+                message_content:
+                  type: string
+                  description: Personalized reminder message
+                appointment_id:
+                  type: string
+                  description: Related appointment if applicable
+                delivery_method:
+                  type: string
+                  description: Preferred contact method
+                  enum:
+                    - email
+                    - sms
+                    - phone
+                    - portal
+      responses:
+        '200':
+          description: Re-engagement nudge sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - nudge_id
+                  - patient_id
+                  - status
+                properties:
+                  nudge_id:
+                    type: string
+                  patient_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  status:
+                    type: string
+                  sent_at:
+                    type: string
+                  delivery_method:
+                    type: string
+                  delivery_status:
+                    type: string
+                  next_nudge_scheduled:
+                    type: string

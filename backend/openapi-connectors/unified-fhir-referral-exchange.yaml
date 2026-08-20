@@ -1,0 +1,82 @@
+openapi: 3.1.0
+info:
+  title: Unified FHIR Referral Exchange
+  version: 1.0.0
+  description: Create and exchange FHIR-compliant referral transaction between healthcare systems
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/unified-fhir-referral-exchange:
+    post:
+      operationId: unifiedFhirReferralExchange
+      summary: Create FHIR referral transaction bundle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - patient_id
+                - requesting_provider
+                - receiving_provider
+              properties:
+                referral_id:
+                  type: string
+                  description: Internal referral identifier
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                requesting_provider:
+                  type: string
+                  description: Referring provider NPI or ID
+                requesting_organization:
+                  type: string
+                  description: Referring organization
+                receiving_provider:
+                  type: string
+                  description: Specialist provider NPI or ID
+                receiving_organization:
+                  type: string
+                  description: Receiving organization
+                clinical_summary:
+                  type: string
+                  description: Clinical information
+                urgency:
+                  type: string
+                  description: Urgency level
+                specialty:
+                  type: string
+                  description: Requested specialty
+      responses:
+        '200':
+          description: FHIR referral transaction created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - transaction_id
+                  - referral_id
+                  - fhir_bundle_id
+                  - status
+                properties:
+                  transaction_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  fhir_bundle_id:
+                    type: string
+                  fhir_version:
+                    type: string
+                  status:
+                    type: string
+                  created_at:
+                    type: string
+                  exchange_endpoint:
+                    type: string
+                  transaction_signed:
+                    type: boolean

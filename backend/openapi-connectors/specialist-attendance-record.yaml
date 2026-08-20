@@ -1,0 +1,86 @@
+openapi: 3.1.0
+info:
+  title: Specialist Attendance Record
+  version: 1.0.0
+  description: Record and confirm specialist attendance or completion of consultation
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/specialist-attendance-record:
+    post:
+      operationId: specialistAttendanceRecord
+      summary: Record specialist consultation attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - appointment_id
+                - referral_id
+                - attendance_status
+              properties:
+                appointment_id:
+                  type: string
+                  description: Appointment identifier
+                referral_id:
+                  type: string
+                  description: Associated referral identifier
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                specialist_id:
+                  type: string
+                  description: Specialist identifier
+                attendance_status:
+                  type: string
+                  description: Attendance status
+                  enum:
+                    - attended
+                    - no_show
+                    - cancelled
+                    - rescheduled
+                consultation_completed:
+                  type: boolean
+                  description: Whether consultation was completed
+                consultation_notes:
+                  type: string
+                  description: Brief consultation summary
+                follow_up_required:
+                  type: boolean
+                  description: Whether follow-up is needed
+                attended_at:
+                  type: string
+                  description: Timestamp of attendance
+      responses:
+        '200':
+          description: Attendance record created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - record_id
+                  - appointment_id
+                  - attendance_status
+                  - recorded_at
+                properties:
+                  record_id:
+                    type: string
+                  appointment_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  attendance_status:
+                    type: string
+                  consultation_completed:
+                    type: boolean
+                  recorded_at:
+                    type: string
+                  recorded_by:
+                    type: string
+                  next_steps:
+                    type: string

@@ -1,0 +1,84 @@
+openapi: 3.1.0
+info:
+  title: Specialist Alert
+  version: 1.0.0
+  description: Send notification alert to specialist about new referral requiring review
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/specialist-alert:
+    post:
+      operationId: specialistAlert
+      summary: Notify specialist of incoming referral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - specialist_id
+                - patient_name
+                - urgency_level
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier
+                specialist_id:
+                  type: string
+                  description: Target specialist identifier
+                specialist_name:
+                  type: string
+                  description: Specialist full name
+                patient_name:
+                  type: string
+                  description: Patient full name
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                urgency_level:
+                  type: string
+                  description: Urgency level
+                specialty_type:
+                  type: string
+                  description: Type of specialty consultation
+                referral_reason:
+                  type: string
+                  description: Brief reason for referral
+                acknowledgment_deadline:
+                  type: string
+                  description: Deadline for specialist to acknowledge
+      responses:
+        '200':
+          description: Specialist alert sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - alert_id
+                  - referral_id
+                  - specialist_id
+                  - status
+                properties:
+                  alert_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  specialist_id:
+                    type: string
+                  status:
+                    type: string
+                  alert_sent_at:
+                    type: string
+                  notification_channels:
+                    type: array
+                    items:
+                      type: string
+                  delivery_confirmed:
+                    type: boolean
+                  acknowledgment_required_by:
+                    type: string
