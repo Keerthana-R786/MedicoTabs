@@ -7,6 +7,37 @@ import { yoxaConfig } from '../config/yoxa.js';
 const router = express.Router();
 
 /**
+ * Transform a raw hitl_approval_requests row to the camelCase shape
+ * the frontend expects (options[].option_id -> optionId etc.)
+ */
+function transformApproval(row) {
+  if (!row) return row;
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    requestId: row.request_id,
+    workflowRunId: row.workflow_run_id,
+    deploymentId: row.deployment_id,
+    referralId: row.referral_id,
+    patientId: row.patient_id,
+    title: row.title,
+    description: row.description,
+    options: (row.options || []).map((o) => ({
+      optionId: o.option_id || o.optionId,
+      title: o.title,
+      description: o.description,
+    })),
+    assignedTo: row.assigned_to,
+    status: row.status,
+    selectedOptionId: row.selected_option_id,
+    overrideMessage: row.override_message,
+    answeredBy: row.answered_by,
+    answeredAt: row.answered_at,
+    receivedAt: row.received_at,
+  };
+}
+
+/**
  * POST /api/hitl/webhook
  * Receive YOXA HITL approval requests
  * CRITICAL: This must be publicly accessible from YOXA
@@ -193,10 +224,10 @@ router.get('/pending', async (req, res) => {
     }
     
     const { data, error } = await query;
-    
+
     if (error) throw error;
-    
-    res.json(data);
+
+    res.json((data || []).map(transformApproval));
   } catch (error) {
     console.error('Error fetching pending approvals:', error);
     res.status(500).json({ error: 'Failed to fetch approvals' });
@@ -214,11 +245,11 @@ router.get('/:id', async (req, res) => {
       .select('*')
       .eq('id', req.params.id)
       .single();
-    
+
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Approval not found' });
-    
-    res.json(data);
+
+    res.json(transformApproval(data));
   } catch (error) {
     console.error('Error fetching approval:', error);
     res.status(500).json({ error: 'Failed to fetch approval' });
