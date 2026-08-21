@@ -21,6 +21,13 @@ router.post('/', async (req, res) => {
       referralReason,
       serviceType,
       urgency,
+      // Contact & coverage details collected on the referral form
+      patientContactNumber,
+      patientEmail,
+      patientAddress,
+      preferredContactMethod,
+      insuranceProvider,
+      insuranceMemberId,
     } = req.body;
     
     // Validate required fields
@@ -51,6 +58,28 @@ router.post('/', async (req, res) => {
     if (patientError || !patient) {
       return res.status(404).json({ error: 'Patient not found' });
     }
+    
+    // Merge form-supplied contact/coverage details onto the patient record
+    // so the EHR stays current and agents always read fresh data.
+    const finalContact = patientContactNumber || patient.contact_number;
+    const finalEmail = patientEmail || patient.email;
+    const finalAddress = patientAddress || patient.address;
+    const mergedInsurance = {
+      ...(patient.insurance || {}),
+      ...(insuranceProvider ? { provider: insuranceProvider } : {}),
+      ...(insuranceMemberId ? { memberId: insuranceMemberId } : {}),
+    };
+    
+    await supabase
+      .from('patients')
+      .update({
+        contact_number: finalContact,
+        email: finalEmail,
+        address: finalAddress,
+        insurance: mergedInsurance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', patientId);
     
     // Generate referral number
     const referralNumber = `RFL-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
@@ -99,12 +128,17 @@ router.post('/', async (req, res) => {
     
     // Prepare data for YOXA workflow trigger
     const workflowData = {
+      referralId: referral.id,
       referralNumber: referral.referral_number,
       patientId: patient.id,
       patientName: `${patient.first_name} ${patient.last_name}`,
       patientDOB: patient.date_of_birth,
-      insuranceProvider: patient.insurance.provider,
-      memberId: patient.insurance.memberId,
+      patientContactNumber: finalContact,
+      patientEmail: finalEmail,
+      patientAddress: finalAddress,
+      preferredContactMethod: preferredContactMethod || 'phone',
+      insuranceProvider: mergedInsurance.provider || '',
+      insuranceMemberId: mergedInsurance.memberId || '',
       referralReason,
       requestedSpecialty,
       specialistPreference,

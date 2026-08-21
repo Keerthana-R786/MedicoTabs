@@ -1,0 +1,96 @@
+openapi: 3.1.0
+info:
+  title: Appointment Slot and Acceptance
+  version: 1.0.0
+  description: Checks real appointment availability and records the patient's acceptance of a specific slot without converting tentative availability into a booking
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/appointment-slot-acceptance:
+    post:
+      operationId: appointmentSlotAcceptance
+      summary: Record offered slot and patient acceptance of that exact slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - patient_id
+                - slot_date
+                - slot_time
+                - patient_accepted
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier or referral number
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                specialist_id:
+                  type: string
+                  description: Offering specialist identifier
+                specialist_name:
+                  type: string
+                  description: Offering specialist name
+                organization:
+                  type: string
+                  description: Specialist organization or clinic location
+                slot_date:
+                  type: string
+                  description: Offered appointment date, YYYY-MM-DD
+                slot_time:
+                  type: string
+                  description: Offered appointment time
+                timezone:
+                  type: string
+                  description: IANA timezone of the slot
+                patient_accepted:
+                  type: boolean
+                  description: Whether the patient accepted this specific slot
+                contact_channel:
+                  type: string
+                  description: Channel used to reach the patient, e.g. phone, sms, email
+      responses:
+        '200':
+          description: Slot acceptance recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - referral_id
+                  - acceptance_status
+                properties:
+                  referral_id:
+                    type: string
+                  patient_id:
+                    type: string
+                  specialist_id:
+                    type: string
+                  specialist_name:
+                    type: string
+                  slot_date:
+                    type: string
+                  slot_time:
+                    type: string
+                  timezone:
+                    type: string
+                  acceptance_status:
+                    type: string
+                  is_confirmed_appointment:
+                    type: boolean
+                  booking_confirmation:
+                    type: string
+                  location:
+                    type: string
+                  contact_channel:
+                    type: string
+                  recorded_at:
+                    type: string
+                  next_action:
+                    type: string

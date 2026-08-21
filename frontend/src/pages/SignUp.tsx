@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Stethoscope, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Stethoscope, Eye, EyeOff } from 'lucide-react';
 import InlineAlert from '@/components/ui/InlineAlert';
 import HeroBackdrop from '@/components/HeroBackdrop';
 import { formatError } from '@/utils/messages';

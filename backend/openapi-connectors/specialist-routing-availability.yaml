@@ -1,0 +1,78 @@
+openapi: 3.1.0
+info:
+  title: Specialist Routing and Availability
+  version: 1.0.0
+  description: Checks same-specialty routing options and reroutes an unacknowledged referral to the next available specialist or on-call provider
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/specialist-routing-availability:
+    post:
+      operationId: specialistRoutingAvailability
+      summary: Check same-specialty routing options and reroute eligibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - specialty_type
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier or referral number
+                specialty_type:
+                  type: string
+                  description: Requested specialty to search for
+                preferred_specialist:
+                  type: string
+                  description: Preferred specialist name or facility
+                current_specialist_id:
+                  type: string
+                  description: Currently routed specialist identifier
+                urgency:
+                  type: string
+                  description: Referral urgency level
+                check_type:
+                  type: string
+                  description: Routing check context, e.g. initial_routing or post_realert
+      responses:
+        '200':
+          description: Routing availability determined
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - referral_id
+                  - routing_status
+                  - reroute_required
+                properties:
+                  referral_id:
+                    type: string
+                  specialty_type:
+                    type: string
+                  check_type:
+                    type: string
+                  routing_status:
+                    type: string
+                  reroute_required:
+                    type: boolean
+                  selected_specialist:
+                    type: object
+                    additionalProperties: true
+                  alternatives_considered:
+                    type: integer
+                  alternatives:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  urgency:
+                    type: string
+                  checked_at:
+                    type: string

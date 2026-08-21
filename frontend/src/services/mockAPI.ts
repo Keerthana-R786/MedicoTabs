@@ -137,7 +137,7 @@ export const mockDocumentsAPI = {
     persistMockDatabase();
     return newDoc;
   },
-  download: async (documentId: string): Promise<Blob> => {
+  download: async (_documentId: string): Promise<Blob> => {
     await delay(500);
     return new Blob(['Mock document content'], { type: 'application/pdf' });
   },
@@ -182,7 +182,7 @@ export const mockFlightTrackerAPI = {
     persistMockDatabase();
     return newTracker;
   },
-  signOff: async (trackerId: string, notes?: string): Promise<FlightTracker> => {
+  signOff: async (trackerId: string, _notes?: string): Promise<FlightTracker> => {
     await delay(600);
     const db = getMockDatabase();
     const tracker = db.trackers.find(t => t.id === trackerId);
@@ -257,7 +257,7 @@ export const mockReferralsAPI = {
       r => r.specialistId === specialistId && ['completed', 'archived'].includes(r.status)
     );
   },
-  acceptReferral: async (id: string, notes?: string): Promise<Referral> => {
+  acceptReferral: async (id: string, _notes?: string): Promise<Referral> => {
     await delay(500);
     const db = getMockDatabase();
     const referral = db.referrals.find(r => r.id === id);
@@ -267,7 +267,7 @@ export const mockReferralsAPI = {
     persistMockDatabase();
     return referral;
   },
-  denyReferral: async (id: string, reason: string): Promise<Referral> => {
+  denyReferral: async (id: string, _reason: string): Promise<Referral> => {
     await delay(500);
     const db = getMockDatabase();
     const referral = db.referrals.find(r => r.id === id);

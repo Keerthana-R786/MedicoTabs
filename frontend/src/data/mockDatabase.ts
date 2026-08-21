@@ -593,7 +593,19 @@ export const mockNotifications: Notification[] = [
 // Helper functions for mock database operations
 const STORAGE_KEY = 'medicotabs_mock_db';
 
-export const getMockData = () => ({
+export interface MockDatabase {
+  users: User[];
+  patients: Patient[];
+  documents: PatientDocument[];
+  trackers: FlightTracker[];
+  referrals: Referral[];
+  messages: Message[];
+  hitlApprovals: HITLApprovalRequest[];
+  coverageVerifications: CoverageVerification[];
+  notifications: Notification[];
+}
+
+export const getMockData = (): MockDatabase => ({
   users: [...mockUsers],
   patients: [...mockPatients],
   documents: [...mockPatientDocuments],
@@ -606,7 +618,7 @@ export const getMockData = () => ({
 });
 
 // Try to load persisted database from localStorage, fall back to fresh defaults
-const loadPersistedData = () => {
+const loadPersistedData = (): MockDatabase => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -631,7 +643,7 @@ const loadPersistedData = () => {
   return getMockData();
 };
 
-let mockDataStore = loadPersistedData();
+let mockDataStore: MockDatabase = loadPersistedData();
 
 const persistData = () => {
   try {

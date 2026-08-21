@@ -24,14 +24,26 @@ export async function triggerWorkflow(referralData) {
     // The workflow's entry trigger has a required field called "trigger_text"
     const payload = {
       trigger_text: `New referral ${referralData.referralNumber} for ${referralData.patientName} - ${referralData.requestedSpecialty} (${referralData.urgency})`,
-      referral_id: referralData.referralNumber,
+      referral_id: referralData.referralId || referralData.referralNumber,
+      referral_number: referralData.referralNumber,
       patient_id: referralData.patientId,
       patient_name: referralData.patientName,
+      patient_dob: referralData.patientDOB,
+      patient_contact_number: referralData.patientContactNumber,
+      patient_email: referralData.patientEmail,
+      patient_address: referralData.patientAddress,
+      preferred_contact_method: referralData.preferredContactMethod,
+      insurance_provider: referralData.insuranceProvider,
+      insurance_member_id: referralData.insuranceMemberId,
       urgency: referralData.urgency,
       requested_specialty: referralData.requestedSpecialty,
+      specialist_preference: referralData.specialistPreference,
+      service_type: referralData.serviceType,
       referral_reason: referralData.referralReason,
+      primary_doctor_id: referralData.primaryDoctorId,
       primary_doctor_name: referralData.primaryDoctorName,
       primary_organization: referralData.primaryOrganization,
+      acknowledgment_deadline: referralData.acknowledgmentDeadline,
     };
     
     console.log('  Payload:', JSON.stringify(payload, null, 2));
@@ -129,8 +141,13 @@ export async function respondToApproval(requestId, selectedOptionId = null, over
     console.log('  Request ID:', requestId);
     console.log('  Selected Option:', selectedOptionId || 'N/A');
     console.log('  Override Message:', overrideMessage ? 'Provided' : 'N/A');
-    
-    const responseUrl = `${yoxaConfig.apiBase}/api/v1/public/workflow-deployments/${yoxaConfig.deploymentId}/hitl/requests/${requestId}/respond`;
+
+    // Normalize base: YOXA_API_BASE may or may not include the /api/v1 prefix
+    const rawBase = String(yoxaConfig.apiBase || '').replace(/\/+$/, '');
+    const normalizedBase = rawBase.endsWith('/api/v1') ? rawBase : `${rawBase}/api/v1`;
+    const responseUrl = `${normalizedBase}/public/workflow-deployments/${yoxaConfig.deploymentId}/hitl/requests/${requestId}/respond`;
+
+    console.log('  Response URL:', responseUrl);
     
     // Construct payload - exactly one of these fields
     const payload = selectedOptionId 
@@ -190,8 +207,10 @@ export async function getWorkflowStatus(workflowRunId) {
   try {
     // Note: This endpoint may require additional authentication
     // Adjust based on actual YOXA API documentation
+    const rawBase = String(yoxaConfig.apiBase || '').replace(/\/+$/, '');
+    const normalizedBase = rawBase.endsWith('/api/v1') ? rawBase : `${rawBase}/api/v1`;
     const response = await axios.get(
-      `${yoxaConfig.apiBase}/api/v1/workflow-runs/${workflowRunId}`,
+      `${normalizedBase}/public/workflow-runs/${workflowRunId}`,
       {
         headers: {
           'Authorization': `Bearer ${yoxaConfig.deploymentSecret}`,

@@ -110,6 +110,13 @@ export interface Referral {
   referralReason: string;
   serviceType?: string;
   urgency: UrgencyLevel;
+  // Contact & coverage details collected at referral creation
+  patientContactNumber?: string;
+  patientEmail?: string;
+  patientAddress?: string;
+  preferredContactMethod?: 'phone' | 'sms' | 'email';
+  insuranceProvider?: string;
+  insuranceMemberId?: string;
   status: 'pending' | 'routed' | 'accepted' | 'denied' | 'rerouted' | 'completed' | 'archived';
   trackerId?: string;
   targetedDocuments?: string[]; // Document IDs

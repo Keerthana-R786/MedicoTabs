@@ -1,0 +1,87 @@
+openapi: 3.1.0
+info:
+  title: Consolidated Referral Summary PDF
+  version: 1.0.0
+  description: Generates the standardized medical history PDF containing the complete confirmed referral journey, tracker audit trail, final urgency, and financial status
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/consolidated-referral-summary-pdf:
+    post:
+      operationId: consolidatedReferralSummaryPdf
+      summary: Generate the standardized consolidated referral summary PDF
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - patient_id
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier or referral number
+                patient_id:
+                  type: string
+                  description: Patient identifier
+                patient_name:
+                  type: string
+                  description: Patient full name
+                document_title:
+                  type: string
+                  description: Output file name for the PDF
+                journey_summary:
+                  type: string
+                  description: Complete confirmed referral journey narrative
+                tracker_audit_trail:
+                  type: string
+                  description: Flight tracker audit trail entries
+                final_urgency:
+                  type: string
+                  description: Final urgency level of the referral
+                financial_status:
+                  type: string
+                  description: Final coverage and co-pay status
+                authored_by:
+                  type: string
+                  description: User identifier of the signing doctor
+      responses:
+        '200':
+          description: Summary PDF generated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - document_id
+                  - referral_id
+                  - status
+                properties:
+                  document_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  referral_number:
+                    type: string
+                  patient_id:
+                    type: string
+                  document_reference_id:
+                    type: string
+                  fhir_resource_id:
+                    type: string
+                  file_name:
+                    type: string
+                  output_type:
+                    type: string
+                  content_length:
+                    type: integer
+                  status:
+                    type: string
+                  generated_at:
+                    type: string
+                  eligible_for_attachment:
+                    type: boolean

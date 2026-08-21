@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Send } from 'lucide-react';
-import { patientsAPI, referralsAPI, flightTrackerAPI } from '@/services/api';
+import { patientsAPI, referralsAPI } from '@/services/api';
 import { Patient, UrgencyLevel } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
 
 // Move Field component outside to prevent re-creation on every render
-const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({ label, required, children }) => (
+const Field: React.FC<{ label: string; required?: boolean; hint?: string; children: React.ReactNode }> = ({ label, required, hint, children }) => (
   <div>
     <label className="block text-[10px] font-semibold text-base-500 mb-1.5 uppercase tracking-wider">
       {label} {required && <span className="text-danger-500">*</span>}
     </label>
     {children}
+    {hint && <p className="text-[10px] text-base-400 mt-1">{hint}</p>}
   </div>
 );
 
@@ -26,12 +27,35 @@ const CreateReferral: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     patientId: searchParams.get('patientId') || '',
+    // Contact & coverage details (auto-filled from patient record, editable)
+    patientContactNumber: '',
+    patientEmail: '',
+    patientAddress: '',
+    preferredContactMethod: 'phone' as 'phone' | 'sms' | 'email',
+    insuranceProvider: '',
+    insuranceMemberId: '',
+    // Referral details
     requestedSpecialty: '', specialistPreference: '',
     referralReason: '', serviceType: '',
     urgency: 'Routine' as UrgencyLevel,
   });
 
   useEffect(() => { loadPatients(); }, []);
+
+  // Auto-fill contact & coverage details whenever a patient is selected
+  useEffect(() => {
+    const patient = patients.find(p => p.id === formData.patientId);
+    if (patient) {
+      setFormData(prev => ({
+        ...prev,
+        patientContactNumber: prev.patientContactNumber || patient.contactNumber || '',
+        patientEmail: prev.patientEmail || patient.email || '',
+        patientAddress: prev.patientAddress || patient.address || '',
+        insuranceProvider: prev.insuranceProvider || patient.insurance?.provider || '',
+        insuranceMemberId: prev.insuranceMemberId || patient.insurance?.memberId || '',
+      }));
+    }
+  }, [formData.patientId, patients]);
 
   const loadPatients = async () => { setPatients(await patientsAPI.getAll()); };
 
@@ -52,12 +76,13 @@ const CreateReferral: React.FC = () => {
         referralReason: formData.referralReason,
         serviceType: formData.serviceType || undefined,
         urgency: formData.urgency,
-      });
-      await flightTrackerAPI.create({
-        patientId: formData.patientId,
-        visitReason: `${formData.requestedSpecialty} — ${formData.referralReason}`,
-        urgency: formData.urgency,
-        workflowRunId,
+        // Contact & coverage details for the YOXA workflow
+        patientContactNumber: formData.patientContactNumber,
+        patientEmail: formData.patientEmail,
+        patientAddress: formData.patientAddress,
+        preferredContactMethod: formData.preferredContactMethod,
+        insuranceProvider: formData.insuranceProvider,
+        insuranceMemberId: formData.insuranceMemberId,
       });
       const msg = formatSuccess(
         'referral-created',
@@ -96,6 +121,58 @@ const CreateReferral: React.FC = () => {
           </select>
         </Field>
 
+        {/* Patient Contact Details */}
+        <div className="neu-pressed rounded-2xl p-5 space-y-5">
+          <p className="text-xs font-bold text-primary-600 uppercase tracking-wider">Patient Contact Details</p>
+          <div className="grid grid-cols-2 gap-5">
+            <Field label="Contact Number" required>
+              <input type="tel" value={formData.patientContactNumber}
+                onChange={(e) => setFormData({ ...formData, patientContactNumber: e.target.value })}
+                className="neu-input w-full" placeholder="+1 555 000 1234"
+                pattern="[+0-9()\-\s]{7,}" title="Enter a valid phone number" required />
+            </Field>
+            <Field label="Email" required>
+              <input type="email" value={formData.patientEmail}
+                onChange={(e) => setFormData({ ...formData, patientEmail: e.target.value })}
+                className="neu-input w-full" placeholder="patient@email.com" required />
+            </Field>
+          </div>
+          <Field label="Address">
+            <input type="text" value={formData.patientAddress}
+              onChange={(e) => setFormData({ ...formData, patientAddress: e.target.value })}
+              className="neu-input w-full" placeholder="Street, City, State, ZIP" />
+          </Field>
+          <Field label="Preferred Contact Method" required
+            hint="Used by YOXA agents for appointment offers and re-engagement nudges">
+            <select value={formData.preferredContactMethod}
+              onChange={(e) => setFormData({ ...formData, preferredContactMethod: e.target.value as 'phone' | 'sms' | 'email' })}
+              className="neu-input w-full" required>
+              <option value="phone">Phone Call</option>
+              <option value="sms">SMS</option>
+              <option value="email">Email</option>
+            </select>
+          </Field>
+        </div>
+
+        {/* Insurance / Coverage */}
+        <div className="neu-pressed rounded-2xl p-5 space-y-5">
+          <p className="text-xs font-bold text-primary-600 uppercase tracking-wider">Insurance & Coverage</p>
+          <div className="grid grid-cols-2 gap-5">
+            <Field label="Insurance Provider" required
+              hint="Verified automatically by the Coverage Verification agent">
+              <input type="text" value={formData.insuranceProvider}
+                onChange={(e) => setFormData({ ...formData, insuranceProvider: e.target.value })}
+                className="neu-input w-full" placeholder="e.g. HarborCare PPO" required />
+            </Field>
+            <Field label="Member ID" required>
+              <input type="text" value={formData.insuranceMemberId}
+                onChange={(e) => setFormData({ ...formData, insuranceMemberId: e.target.value })}
+                className="neu-input w-full" placeholder="e.g. HC8842107" required />
+            </Field>
+          </div>
+        </div>
+
+        {/* Referral Details */}
         <div className="grid grid-cols-2 gap-5">
           <Field label="Requested Specialty" required>
             <select value={formData.requestedSpecialty} onChange={(e) => setFormData({ ...formData, requestedSpecialty: e.target.value })}
@@ -147,7 +224,7 @@ const CreateReferral: React.FC = () => {
           <button type="button" onClick={() => navigate(-1)} className="neu-btn flex-1">Cancel</button>
           <button type="submit" disabled={loading}
             className="neu-btn-primary flex-1 flex items-center justify-center gap-2">
-            <Send className="w-4 h-4" /> {loading ? 'Creating...' : 'Create & Start Workflow'}
+            <Send className="w-4 h-4" /> {loading ? 'Creating...' : 'Submit Referral'}
           </button>
         </div>
       </form>

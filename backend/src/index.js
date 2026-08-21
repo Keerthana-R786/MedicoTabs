@@ -14,6 +14,7 @@ import patientsRouter from './routes/patients.js';
 import referralsRouter from './routes/referrals.js';
 import trackersRouter from './routes/trackers.js';
 import hitlRouter from './routes/hitl.js';
+import yoxaRouter from './routes/yoxa.js';
 
 // Import utilities
 import { captureRawBody } from './utils/hmacVerifier.js';
@@ -75,6 +76,8 @@ app.use('/api/patients', patientsRouter);
 app.use('/api/referrals', referralsRouter);
 app.use('/api/trackers', trackersRouter);
 app.use('/api/hitl', hitlRouter);
+// YOXA tool endpoints - called back by YOXA agents during workflow runs
+app.use('/api/yoxa', yoxaRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -88,11 +91,13 @@ app.get('/', (req, res) => {
       referrals: '/api/referrals',
       trackers: '/api/trackers',
       hitl: '/api/hitl',
+      yoxa: '/api/yoxa',
     },
     yoxaIntegration: {
       triggerWorkflow: 'POST /api/referrals',
       receiveApprovals: 'POST /api/hitl/webhook',
       respondToApproval: 'POST /api/hitl/:requestId/respond',
+      toolEndpoints: '/api/yoxa/*',
     },
   });
 });

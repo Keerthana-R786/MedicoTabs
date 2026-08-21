@@ -146,10 +146,9 @@ const IncomingReferrals: React.FC = () => {
                   <div key={ref.id}
                     className={`rounded-2xl overflow-hidden transition-all ${
                       ref.status === 'routed'
-                        ? `border-2 ${uc.border} bg-base-200 ${uc.pulse ? 'animate-pulse' : ''}`
+                        ? `border-2 ${uc.border} bg-base-200 ring-2 ring-primary-200 ${uc.pulse ? 'animate-pulse' : ''}`
                         : 'border border-base-300 bg-base-200'
-                    }`}
-                    className={ref.status === 'routed' ? 'ring-2 ring-primary-200' : ''}>
+                    }`}>
 
                     {/* Main row */}
                     <div className="p-5 cursor-pointer" onClick={() => setExpandedId(expandedId === ref.id ? null : ref.id)}>
