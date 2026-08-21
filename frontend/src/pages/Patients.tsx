@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Plus, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { mockPatientsAPI } from '@/services/mockAPI';
+import { patientsAPI } from '@/services/api';
 import { Patient } from '@/types';
 
 const Patients: React.FC = () => {
@@ -18,14 +18,14 @@ const Patients: React.FC = () => {
   }, [searchQuery, patients]);
 
   const loadPatients = async () => {
-    const data = await mockPatientsAPI.getAll();
+    const data = await patientsAPI.getAll();
     setPatients(data);
     setFilteredPatients(data);
   };
 
   const performSearch = async () => {
     if (searchQuery.trim()) {
-      const results = await mockPatientsAPI.search(searchQuery);
+      const results = await patientsAPI.search(searchQuery);
       setFilteredPatients(results);
     }
   };

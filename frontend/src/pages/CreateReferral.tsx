@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Send } from 'lucide-react';
-import { mockPatientsAPI, mockReferralsAPI, mockFlightTrackerAPI } from '@/services/mockAPI';
+import { patientsAPI, referralsAPI, flightTrackerAPI } from '@/services/api';
 import { Patient, UrgencyLevel } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -23,7 +23,7 @@ const CreateReferral: React.FC = () => {
 
   useEffect(() => { loadPatients(); }, []);
 
-  const loadPatients = async () => { setPatients(await mockPatientsAPI.getAll()); };
+  const loadPatients = async () => { setPatients(await patientsAPI.getAll()); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +31,7 @@ const CreateReferral: React.FC = () => {
     try {
       const patient = patients.find(p => p.id === formData.patientId);
       if (!patient || !user) return;
-      const { referral, workflowRunId } = await mockReferralsAPI.create({
+      const { referral, workflowRunId } = await referralsAPI.create({
         patientId: formData.patientId,
         patientName: `${patient.firstName} ${patient.lastName}`,
         primaryDoctorId: user.id,
@@ -43,7 +43,7 @@ const CreateReferral: React.FC = () => {
         serviceType: formData.serviceType || undefined,
         urgency: formData.urgency,
       });
-      await mockFlightTrackerAPI.create({
+      await flightTrackerAPI.create({
         patientId: formData.patientId,
         visitReason: `${formData.requestedSpecialty} — ${formData.referralReason}`,
         urgency: formData.urgency,
