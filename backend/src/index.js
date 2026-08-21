@@ -9,6 +9,7 @@ import { testConnection } from './config/database.js';
 import { validateYoxaConfig } from './config/yoxa.js';
 
 // Import routes
+import authRouter from './routes/auth.js';
 import patientsRouter from './routes/patients.js';
 import referralsRouter from './routes/referrals.js';
 import trackersRouter from './routes/trackers.js';
@@ -64,6 +65,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/patients', patientsRouter);
 app.use('/api/referrals', referralsRouter);
 app.use('/api/trackers', trackersRouter);
@@ -76,6 +78,7 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
+      auth: '/api/auth',
       patients: '/api/patients',
       referrals: '/api/referrals',
       trackers: '/api/trackers',

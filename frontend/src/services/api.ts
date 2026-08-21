@@ -27,6 +27,10 @@ export const authAPI = {
     const response = await apiClient.post('/api/auth/login', { email, password });
     return response.data;
   },
+  signup: async (userData: any) => {
+    const response = await apiClient.post('/api/auth/signup', userData);
+    return response.data;
+  },
   logout: async () => {
     const response = await apiClient.post('/api/auth/logout');
     return response.data;
