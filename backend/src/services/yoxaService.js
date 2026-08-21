@@ -10,44 +10,30 @@ import { yoxaConfig } from '../config/yoxa.js';
  */
 export async function triggerWorkflow(referralData) {
   if (!yoxaConfig.triggerUrl || !yoxaConfig.deploymentSecret) {
+    console.error('YOXA configuration incomplete:');
+    console.error('  Trigger URL:', yoxaConfig.triggerUrl || 'MISSING');
+    console.error('  Deployment Secret:', yoxaConfig.deploymentSecret ? 'SET' : 'MISSING');
     throw new Error('YOXA configuration incomplete. Cannot trigger workflow.');
   }
   
   try {
     console.log('🚀 Triggering YOXA workflow for referral:', referralData.referralNumber);
+    console.log('  Trigger URL:', yoxaConfig.triggerUrl);
     
-    // Construct the payload for YOXA trigger
-    // This must match what the YOXA workflow expects as entry trigger input
+    // SIMPLIFIED PAYLOAD - Match what YOXA workflow entry trigger expects
+    // Start with minimal fields and add more as needed
     const payload = {
-      // Entry trigger fields based on workflow context
-      patient_context: {
-        patient_id: referralData.patientId,
-        patient_name: referralData.patientName,
-        date_of_birth: referralData.patientDOB,
-        insurance_provider: referralData.insuranceProvider,
-        member_id: referralData.memberId,
-      },
-      referral_details: {
-        referral_id: referralData.referralNumber,
-        referral_reason: referralData.referralReason,
-        requested_specialty: referralData.requestedSpecialty,
-        specialist_preference: referralData.specialistPreference || null,
-        service_type: referralData.serviceType || null,
-        urgency: referralData.urgency, // Routine, Urgent, or Emergency
-      },
-      primary_doctor: {
-        doctor_id: referralData.primaryDoctorId,
-        doctor_name: referralData.primaryDoctorName,
-        organization: referralData.primaryOrganization,
-      },
-      // Optional: Include document references if already uploaded
-      documents: referralData.documentIds || [],
-      // Metadata for tracking
-      metadata: {
-        ehr_system: 'MedicoTabs',
-        created_at: new Date().toISOString(),
-      },
+      referral_id: referralData.referralNumber,
+      patient_id: referralData.patientId,
+      patient_name: referralData.patientName,
+      urgency: referralData.urgency,
+      requested_specialty: referralData.requestedSpecialty,
+      referral_reason: referralData.referralReason,
+      primary_doctor_name: referralData.primaryDoctorName,
+      primary_organization: referralData.primaryOrganization,
     };
+    
+    console.log('  Payload:', JSON.stringify(payload, null, 2));
     
     // Make the trigger request to YOXA
     const response = await axios.post(
@@ -58,12 +44,15 @@ export async function triggerWorkflow(referralData) {
           'Authorization': `Bearer ${yoxaConfig.deploymentSecret}`,
           'Content-Type': 'application/json',
         },
-        timeout: 10000, // 10 second timeout
+        timeout: 30000, // 30 second timeout
       }
     );
     
+    console.log('  YOXA Response Status:', response.status);
+    console.log('  YOXA Response Data:', JSON.stringify(response.data, null, 2));
+    
     // YOXA returns workflow_run_id on successful trigger
-    const workflowRunId = response.data.workflow_run_id || response.data.workflowRunId;
+    const workflowRunId = response.data.workflow_run_id || response.data.workflowRunId || response.data.run_id;
     
     if (!workflowRunId) {
       console.error('YOXA response missing workflow_run_id:', response.data);
@@ -80,11 +69,26 @@ export async function triggerWorkflow(referralData) {
     };
     
   } catch (error) {
-    console.error('✗ Failed to trigger YOXA workflow:', error.message);
+    console.error('✗ Failed to trigger YOXA workflow');
+    console.error('  Error:', error.message);
     
     if (error.response) {
       console.error('  Status:', error.response.status);
-      console.error('  Response:', error.response.data);
+      console.error('  Status Text:', error.response.statusText);
+      console.error('  Response Data:', JSON.stringify(error.response.data, null, 2));
+      console.error('  Response Headers:', JSON.stringify(error.response.headers, null, 2));
+    }
+    
+    if (error.code === 'ECONNREFUSED') {
+      throw new Error('YOXA API is not reachable. Check if YOXA_TRIGGER_URL is correct.');
+    }
+    
+    if (error.response?.status === 400) {
+      throw new Error(`YOXA rejected the trigger payload (400). Error: ${JSON.stringify(error.response.data)}`);
+    }
+    
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      throw new Error('YOXA authentication failed. Check YOXA_DEPLOYMENT_SECRET.');
     }
     
     throw new Error(`YOXA workflow trigger failed: ${error.message}`);
