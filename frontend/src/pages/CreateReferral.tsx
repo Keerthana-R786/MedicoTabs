@@ -64,7 +64,14 @@ const CreateReferral: React.FC = () => {
     setLoading(true);
     try {
       const patient = patients.find(p => p.id === formData.patientId);
-      if (!patient || !user) return;
+      if (!patient) {
+        showError('No patient selected', 'Select a patient from the list before submitting.');
+        return;
+      }
+      if (!user) {
+        showError('Session expired', 'Please log out and log back in, then try again.');
+        return;
+      }
       const { referral, workflowRunId } = await referralsAPI.create({
         patientId: formData.patientId,
         patientName: `${patient.firstName} ${patient.lastName}`,
