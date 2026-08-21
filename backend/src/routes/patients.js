@@ -103,13 +103,15 @@ router.post('/', async (req, res) => {
       contact_number: req.body.contactNumber || req.body.contact_number,
       email: req.body.email,
       address: req.body.address,
-      blood_group: req.body.bloodGroup || req.body.blood_group,
-      allergies: req.body.allergies,
+      blood_group: req.body.bloodGroup || req.body.blood_group || null,
+      allergies: req.body.allergies || [],
       insurance: req.body.insurance,
-      primary_doctor_id: req.body.primaryDoctorId || req.body.primary_doctor_id,
+      primary_doctor_id: null, // Set to null for now since we don't have users seeded
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+    
+    console.log('Creating patient with data:', JSON.stringify(patientData, null, 2));
     
     const { data, error } = await supabase
       .from('patients')
@@ -117,12 +119,20 @@ router.post('/', async (req, res) => {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
     
+    console.log('Patient created successfully:', data);
     res.status(201).json(data);
   } catch (error) {
     console.error('Error creating patient:', error);
-    res.status(500).json({ error: 'Failed to create patient', details: error.message });
+    res.status(500).json({ 
+      error: 'Failed to create patient', 
+      details: error.message,
+      hint: error.hint 
+    });
   }
 });
 
