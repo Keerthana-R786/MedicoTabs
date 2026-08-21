@@ -35,6 +35,10 @@ export async function triggerWorkflow(referralData) {
     
     console.log('  Payload:', JSON.stringify(payload, null, 2));
     
+    // Generate idempotency key to prevent duplicate triggers
+    // Use referral number + timestamp to ensure uniqueness
+    const idempotencyKey = `${referralData.referralNumber}-${Date.now()}`;
+    
     // Make the trigger request to YOXA
     const response = await axios.post(
       yoxaConfig.triggerUrl,
@@ -43,6 +47,7 @@ export async function triggerWorkflow(referralData) {
         headers: {
           'Authorization': `Bearer ${yoxaConfig.deploymentSecret}`,
           'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey, // REQUIRED by YOXA
         },
         timeout: 30000, // 30 second timeout
       }
