@@ -177,12 +177,26 @@ router.post('/', async (req, res) => {
           referral_id: referral.id,
         });
       
-      // Return success response
+    // Return success response with camelCase transformation
       res.status(201).json({
         success: true,
         referral: {
-          ...referral,
-          workflow_run_id: yoxaResult.workflowRunId,
+          id: referral.id,
+          referralNumber: referral.referral_number,
+          patientId: referral.patient_id,
+          patientName: referral.patient_name,
+          primaryDoctorId: referral.primary_doctor_id,
+          primaryDoctorName: referral.primary_doctor_name,
+          primaryOrganization: referral.primary_organization,
+          requestedSpecialty: referral.requested_specialty,
+          specialistPreference: referral.specialist_preference,
+          referralReason: referral.referral_reason,
+          serviceType: referral.service_type,
+          urgency: referral.urgency,
+          status: 'routed',
+          workflowRunId: yoxaResult.workflowRunId,
+          trackerId: tracker?.id,
+          createdAt: referral.created_at,
         },
         workflowRunId: yoxaResult.workflowRunId,
         trackerId: tracker?.id,
@@ -199,10 +213,25 @@ router.post('/', async (req, res) => {
         .update({ status: 'pending' }) // Keep as pending if workflow failed
         .eq('id', referral.id);
       
-      // Still return the referral but indicate workflow failure
+      // Still return the referral but indicate workflow failure with camelCase
       res.status(201).json({
         success: true,
-        referral,
+        referral: {
+          id: referral.id,
+          referralNumber: referral.referral_number,
+          patientId: referral.patient_id,
+          patientName: referral.patient_name,
+          primaryDoctorId: referral.primary_doctor_id,
+          primaryDoctorName: referral.primary_doctor_name,
+          primaryOrganization: referral.primary_organization,
+          requestedSpecialty: referral.requested_specialty,
+          specialistPreference: referral.specialist_preference,
+          referralReason: referral.referral_reason,
+          serviceType: referral.service_type,
+          urgency: referral.urgency,
+          status: referral.status,
+          createdAt: referral.created_at,
+        },
         workflowRunId: null,
         workflowError: yoxaError.message,
         message: 'Referral created but YOXA workflow trigger failed. Manual intervention required.',
@@ -231,7 +260,28 @@ router.get('/', async (req, res) => {
     
     if (error) throw error;
     
-    res.json(data);
+    // Transform to camelCase
+    const transformed = (data || []).map(r => ({
+      id: r.id,
+      referralNumber: r.referral_number,
+      patientId: r.patient_id,
+      patientName: r.patient_name,
+      primaryDoctorId: r.primary_doctor_id,
+      primaryDoctorName: r.primary_doctor_name,
+      primaryOrganization: r.primary_organization,
+      requestedSpecialty: r.requested_specialty,
+      specialistPreference: r.specialist_preference,
+      referralReason: r.referral_reason,
+      serviceType: r.service_type,
+      urgency: r.urgency,
+      status: r.status,
+      workflowRunId: r.workflow_run_id,
+      trackerId: r.tracker_id,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
+    
+    res.json(transformed);
   } catch (error) {
     console.error('Error fetching referrals:', error);
     res.status(500).json({ error: 'Failed to fetch referrals' });

@@ -18,7 +18,22 @@ router.get('/:id', async (req, res) => {
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Tracker not found' });
     
-    res.json(data);
+    // Transform to camelCase
+    const tracker = {
+      id: data.id,
+      patientId: data.patient_id,
+      visitReason: data.visit_reason,
+      urgency: data.urgency,
+      currentStage: data.current_stage,
+      stages: data.stages,
+      startedAt: data.started_at,
+      completedAt: data.completed_at,
+      signedOffBy: data.signed_off_by,
+      signedOffAt: data.signed_off_at,
+      workflowRunId: data.workflow_run_id,
+    };
+    
+    res.json(tracker);
   } catch (error) {
     console.error('Error fetching tracker:', error);
     res.status(500).json({ error: 'Failed to fetch tracker' });
@@ -31,15 +46,38 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
+    // Map camelCase to snake_case
+    const trackerData = {
+      patient_id: req.body.patientId,
+      visit_reason: req.body.visitReason,
+      urgency: req.body.urgency,
+      current_stage: req.body.currentStage || 'create_and_route',
+      stages: req.body.stages || [],
+      workflow_run_id: req.body.workflowRunId,
+      started_at: new Date().toISOString(),
+    };
+    
     const { data, error } = await supabase
       .from('flight_trackers')
-      .insert(req.body)
+      .insert(trackerData)
       .select()
       .single();
     
     if (error) throw error;
     
-    res.status(201).json(data);
+    // Transform back to camelCase
+    const tracker = {
+      id: data.id,
+      patientId: data.patient_id,
+      visitReason: data.visit_reason,
+      urgency: data.urgency,
+      currentStage: data.current_stage,
+      stages: data.stages,
+      startedAt: data.started_at,
+      workflowRunId: data.workflow_run_id,
+    };
+    
+    res.status(201).json(tracker);
   } catch (error) {
     console.error('Error creating tracker:', error);
     res.status(500).json({ error: 'Failed to create tracker' });
