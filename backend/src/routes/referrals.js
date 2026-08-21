@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
         referral_number: referralNumber,
         patient_id: patientId,
         patient_name: patientName,
-        primary_doctor_id: primaryDoctorId,
+        primary_doctor_id: primaryDoctorId || null, // Set to null if not provided or invalid
         primary_doctor_name: primaryDoctorName,
         primary_organization: primaryOrganization,
         requested_specialty: requestedSpecialty,
