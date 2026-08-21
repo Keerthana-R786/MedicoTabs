@@ -83,9 +83,20 @@ router.post('/', async (req, res) => {
     // Generate referral ID
     const referralId = `RFL-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
     
+    // Map camelCase from frontend to snake_case for database
     const patientData = {
-      ...req.body,
       referral_id: referralId,
+      first_name: req.body.firstName || req.body.first_name,
+      last_name: req.body.lastName || req.body.last_name,
+      date_of_birth: req.body.dateOfBirth || req.body.date_of_birth,
+      gender: req.body.gender?.toLowerCase(),
+      contact_number: req.body.contactNumber || req.body.contact_number,
+      email: req.body.email,
+      address: req.body.address,
+      blood_group: req.body.bloodGroup || req.body.blood_group,
+      allergies: req.body.allergies,
+      insurance: req.body.insurance,
+      primary_doctor_id: req.body.primaryDoctorId || req.body.primary_doctor_id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -101,7 +112,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(data);
   } catch (error) {
     console.error('Error creating patient:', error);
-    res.status(500).json({ error: 'Failed to create patient' });
+    res.status(500).json({ error: 'Failed to create patient', details: error.message });
   }
 });
 
