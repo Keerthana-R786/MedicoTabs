@@ -23,7 +23,26 @@ router.get('/', async (req, res) => {
       });
     }
     
-    res.json(data || []);
+    // Transform snake_case to camelCase for frontend
+    const transformedData = (data || []).map(patient => ({
+      id: patient.id,
+      referralId: patient.referral_id,
+      firstName: patient.first_name,
+      lastName: patient.last_name,
+      dateOfBirth: patient.date_of_birth,
+      gender: patient.gender,
+      contactNumber: patient.contact_number,
+      email: patient.email,
+      address: patient.address,
+      bloodGroup: patient.blood_group,
+      allergies: patient.allergies,
+      insurance: patient.insurance,
+      primaryDoctorId: patient.primary_doctor_id,
+      createdAt: patient.created_at,
+      updatedAt: patient.updated_at
+    }));
+    
+    res.json(transformedData);
   } catch (error) {
     console.error('Error fetching patients:', error);
     res.status(500).json({ 
@@ -77,7 +96,26 @@ router.get('/:id', async (req, res) => {
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Patient not found' });
     
-    res.json(data);
+    // Transform to camelCase
+    const patient = {
+      id: data.id,
+      referralId: data.referral_id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      dateOfBirth: data.date_of_birth,
+      gender: data.gender,
+      contactNumber: data.contact_number,
+      email: data.email,
+      address: data.address,
+      bloodGroup: data.blood_group,
+      allergies: data.allergies,
+      insurance: data.insurance,
+      primaryDoctorId: data.primary_doctor_id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+    
+    res.json(patient);
   } catch (error) {
     console.error('Error fetching patient:', error);
     res.status(500).json({ error: 'Failed to fetch patient' });
@@ -125,7 +163,27 @@ router.post('/', async (req, res) => {
     }
     
     console.log('Patient created successfully:', data);
-    res.status(201).json(data);
+    
+    // Transform to camelCase for frontend
+    const patient = {
+      id: data.id,
+      referralId: data.referral_id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      dateOfBirth: data.date_of_birth,
+      gender: data.gender,
+      contactNumber: data.contact_number,
+      email: data.email,
+      address: data.address,
+      bloodGroup: data.blood_group,
+      allergies: data.allergies,
+      insurance: data.insurance,
+      primaryDoctorId: data.primary_doctor_id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+    
+    res.status(201).json(patient);
   } catch (error) {
     console.error('Error creating patient:', error);
     res.status(500).json({ 
