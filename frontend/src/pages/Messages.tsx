@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Send, MessageSquare } from 'lucide-react';
-import { mockMessagesAPI } from '@/services/mockAPI';
+import { messagesAPI } from '@/services/api';
 import { Message } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -16,18 +16,18 @@ const Messages: React.FC = () => {
 
   useEffect(() => { loadMessages(); }, []);
 
-  const loadMessages = async () => { setMessages(await mockMessagesAPI.getInbox()); };
+  const loadMessages = async () => { setMessages(await messagesAPI.getInbox()); };
 
   const handleSelectMessage = async (message: Message) => {
     setSelectedMessage(message);
-    if (!message.isRead) { await mockMessagesAPI.markAsRead(message.id); await loadMessages(); }
+    if (!message.isRead) { await messagesAPI.markAsRead(message.id); await loadMessages(); }
   };
 
   const handleSendReply = async () => {
     if (!selectedMessage || !replyText.trim() || !user) return;
     setSending(true);
     try {
-      await mockMessagesAPI.send({
+      await messagesAPI.send({
         referralId: selectedMessage.referralId,
         senderId: user.id,
         senderName: `Dr. ${user.firstName} ${user.lastName}`,

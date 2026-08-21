@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import { mockPatientsAPI } from '@/services/mockAPI';
+import { patientsAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NewPatient: React.FC = () => {
@@ -29,7 +29,7 @@ const NewPatient: React.FC = () => {
     setLoading(true);
 
     try {
-      const patient = await mockPatientsAPI.create({
+      const patient = await patientsAPI.create({
         firstName: formData.firstName,
         lastName: formData.lastName,
         dateOfBirth: formData.dateOfBirth,

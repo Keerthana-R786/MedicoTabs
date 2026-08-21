@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Bell, CheckCheck, FileText, MessageSquare, AlertTriangle, ShieldCheck, Info,
 } from 'lucide-react';
-import { mockNotificationsAPI } from '@/services/mockAPI';
+import { notificationsAPI } from '@/services/api';
 import { Notification } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -32,7 +32,7 @@ const Notifications: React.FC = () => {
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const data = await mockNotificationsAPI.getAll();
+      const data = await notificationsAPI.getAll();
       setNotifications(data.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
     } finally {
       setLoading(false);
@@ -40,12 +40,12 @@ const Notifications: React.FC = () => {
   };
 
   const handleMarkRead = async (id: string) => {
-    await mockNotificationsAPI.markAsRead(id);
+    await notificationsAPI.markAsRead(id);
     await loadNotifications();
   };
 
   const handleMarkAllRead = async () => {
-    await mockNotificationsAPI.markAllAsRead();
+    await notificationsAPI.markAllAsRead();
     await loadNotifications();
     success('All caught up', 'Every notification is marked as read.');
   };

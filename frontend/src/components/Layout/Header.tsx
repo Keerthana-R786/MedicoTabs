@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, LogOut, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockNotificationsAPI } from '@/services/mockAPI';
+import { notificationsAPI } from '@/services/api';
 import { Notification } from '@/types';
 
 const Header: React.FC = () => {
@@ -16,7 +16,7 @@ const Header: React.FC = () => {
 
   const loadNotifications = async () => {
     try {
-      const data = await mockNotificationsAPI.getAll();
+      const data = await notificationsAPI.getAll();
       setNotifications(data);
     } catch (error) {
       console.error('Failed to load notifications:', error);

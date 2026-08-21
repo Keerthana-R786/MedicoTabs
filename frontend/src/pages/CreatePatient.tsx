@@ -6,6 +6,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
 
+// Move these components outside to prevent re-creation on every render
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <div>
+    <h3 className="text-sm font-bold text-base-700 uppercase tracking-wider mb-3">{title}</h3>
+    <div className="neu-pressed rounded-2xl p-5 space-y-4">
+      {children}
+    </div>
+  </div>
+);
+
+const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({ label, required, children }) => (
+  <div>
+    <label className="block text-[10px] font-semibold text-base-500 mb-1.5 uppercase tracking-wider">
+      {label} {required && <span className="text-danger-500">*</span>}
+    </label>
+    {children}
+  </div>
+);
+
 const CreatePatient: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -44,24 +63,6 @@ const CreatePatient: React.FC = () => {
     }
     finally { setLoading(false); }
   };
-
-  const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div>
-      <h3 className="text-sm font-bold text-base-700 uppercase tracking-wider mb-3">{title}</h3>
-      <div className="neu-pressed rounded-2xl p-5 space-y-4">
-        {children}
-      </div>
-    </div>
-  );
-
-  const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({ label, required, children }) => (
-    <div>
-      <label className="block text-[10px] font-semibold text-base-500 mb-1.5 uppercase tracking-wider">
-        {label} {required && <span className="text-danger-500">*</span>}
-      </label>
-      {children}
-    </div>
-  );
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Upload, Plus, FileText, Plane } from 'lucide-react';
-import { mockPatientsAPI, mockDocumentsAPI, mockFlightTrackerAPI, mockReferralsAPI } from '@/services/mockAPI';
+import { patientsAPI, documentsAPI, flightTrackerAPI, referralsAPI } from '@/services/api';
 import { Patient, PatientDocument, FlightTracker, Referral } from '@/types';
 import FlightTrackerView from '@/components/FlightTracker/FlightTrackerView';
 
@@ -18,17 +18,23 @@ const PatientDetail: React.FC = () => {
 
   const loadPatientData = async () => {
     if (!id) return;
-    setPatient(await mockPatientsAPI.getById(id));
-    setDocuments(await mockDocumentsAPI.getByPatientId(id));
-    setTrackers(await mockFlightTrackerAPI.getByPatientId(id));
-    setReferrals(await mockReferralsAPI.getByPatientId(id));
+    try {
+      setPatient(await patientsAPI.getById(id));
+      setDocuments(await documentsAPI.getByPatientId(id));
+      setTrackers(await flightTrackerAPI.getByPatientId(id));
+      setReferrals(await referralsAPI.getByPatientId(id));
+    } catch (error) {
+      console.error('Error loading patient data:', error);
+      // If patient not found or error, navigate back
+      navigate('/patients');
+    }
   };
 
   const handleStartTracking = async () => {
     if (!patient) return;
     const visitReason = prompt('Enter visit reason:');
     if (!visitReason) return;
-    const tracker = await mockFlightTrackerAPI.create({
+    const tracker = await flightTrackerAPI.create({
       patientId: patient.id, visitReason, urgency: 'Routine',
     });
     setTrackers([...trackers, tracker]);
@@ -36,7 +42,7 @@ const PatientDetail: React.FC = () => {
   };
 
   const handleDownload = async (doc: PatientDocument) => {
-    const blob = await mockDocumentsAPI.download(doc.id);
+    const blob = await documentsAPI.download(doc.id);
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = doc.fileName; a.click();

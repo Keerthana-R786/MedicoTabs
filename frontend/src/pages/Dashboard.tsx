@@ -4,7 +4,7 @@ import {
   Users, FileText, CheckCircle, Clock, AlertCircle,
   Inbox, ArrowRight, Stethoscope, MessageSquare,
 } from 'lucide-react';
-import { mockStatsAPI, mockReferralsAPI } from '@/services/mockAPI';
+import { statsAPI, referralsAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardStats, Referral } from '@/types';
 
@@ -22,13 +22,13 @@ const Dashboard: React.FC = () => {
   }, [user, isSpecialist]);
 
   const loadStats = async () => {
-    const data = await mockStatsAPI.getDashboard();
+    const data = await statsAPI.getDashboard();
     setStats(data);
   };
 
   const loadIncomingReferrals = async () => {
     if (!user) return;
-    const incoming = await mockReferralsAPI.getIncomingForSpecialist(user.id);
+    const incoming = await referralsAPI.getAll(); // Backend will filter
     setPendingIncoming(incoming);
   };
 

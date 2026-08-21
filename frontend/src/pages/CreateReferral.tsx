@@ -7,6 +7,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
 
+// Move Field component outside to prevent re-creation on every render
+const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({ label, required, children }) => (
+  <div>
+    <label className="block text-[10px] font-semibold text-base-500 mb-1.5 uppercase tracking-wider">
+      {label} {required && <span className="text-danger-500">*</span>}
+    </label>
+    {children}
+  </div>
+);
+
 const CreateReferral: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -61,15 +71,6 @@ const CreateReferral: React.FC = () => {
     }
     finally { setLoading(false); }
   };
-
-  const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({ label, required, children }) => (
-    <div>
-      <label className="block text-[10px] font-semibold text-base-500 mb-1.5 uppercase tracking-wider">
-        {label} {required && <span className="text-danger-500">*</span>}
-      </label>
-      {children}
-    </div>
-  );
 
   return (
     <div className="space-y-6">

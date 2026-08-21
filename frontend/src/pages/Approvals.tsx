@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Clock } from 'lucide-react';
-import { mockHITLAPI } from '@/services/mockAPI';
+import { hitlAPI } from '@/services/api';
 import { HITLApprovalRequest } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
@@ -14,13 +14,13 @@ const Approvals: React.FC = () => {
 
   useEffect(() => { loadApprovals(); }, []);
 
-  const loadApprovals = async () => { setApprovals(await mockHITLAPI.getPending()); };
+  const loadApprovals = async () => { setApprovals(await hitlAPI.getPending()); };
 
   const handleRespond = async (optionId?: string) => {
     if (!selected) return;
     setSubmitting(true);
     try {
-      await mockHITLAPI.respond(selected.requestId, optionId, customResponse || undefined);
+      await hitlAPI.respond(selected.requestId, optionId, customResponse || undefined);
       const msg = formatSuccess('approval-submitted');
       success(msg.title, msg.description);
       await loadApprovals();

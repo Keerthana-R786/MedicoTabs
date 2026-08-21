@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
-import { mockAuthAPI } from '@/services/mockAPI';
+import { authAPI } from '@/services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const currentUser = await mockAuthAPI.getCurrentUser();
+        const currentUser = await authAPI.getCurrentUser();
         setUser(currentUser);
       } catch {
         setUser(null);
@@ -42,17 +42,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { user: loggedInUser } = await mockAuthAPI.login(email, password);
+    const { user: loggedInUser } = await authAPI.login(email, password);
     setUser(loggedInUser);
   };
 
-  const signup = async (userData: Parameters<typeof mockAuthAPI.signup>[0]) => {
-    const { user: newUser } = await mockAuthAPI.signup(userData);
+  const signup = async (userData: any) => {
+    const { user: newUser } = await authAPI.signup(userData);
     setUser(newUser);
   };
 
   const logout = async () => {
-    await mockAuthAPI.logout();
+    await authAPI.logout();
     setUser(null);
   };
 

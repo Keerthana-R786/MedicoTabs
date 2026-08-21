@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, User, Building2, Stethoscope,
   Calendar, MessageSquare,
 } from 'lucide-react';
-import { mockReferralsAPI } from '@/services/mockAPI';
+import { referralsAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Referral } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
@@ -26,15 +26,15 @@ const IncomingReferrals: React.FC = () => {
 
   const loadReferrals = async () => {
     if (!user) return;
-    setPendingReferrals(await mockReferralsAPI.getIncomingForSpecialist(user.id));
-    setAcceptedReferrals(await mockReferralsAPI.getAcceptedForSpecialist(user.id));
-    setCompletedReferrals(await mockReferralsAPI.getCompletedForSpecialist(user.id));
+    setPendingReferrals(await referralsAPI.getAll()); // Backend should filter by user
+    setAcceptedReferrals(await referralsAPI.getAll()); // Backend should filter by status
+    setCompletedReferrals(await referralsAPI.getAll()); // Backend should filter by status
   };
 
   const handleAccept = async (id: string) => {
     setActionLoading(id);
     try {
-      await mockReferralsAPI.acceptReferral(id);
+      await referralsAPI.acceptReferral(id);
       await loadReferrals();
       const msg = formatSuccess('referral-accepted');
       success(msg.title, msg.description);
@@ -50,7 +50,7 @@ const IncomingReferrals: React.FC = () => {
     if (reason === null) return;
     setActionLoading(id);
     try {
-      await mockReferralsAPI.denyReferral(id, reason);
+      await referralsAPI.denyReferral(id, reason);
       await loadReferrals();
       const msg = formatSuccess('referral-declined');
       success(msg.title, msg.description);

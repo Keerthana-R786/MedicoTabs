@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Plus, Filter, Calendar } from 'lucide-react';
-import { mockReferralsAPI } from '@/services/mockAPI';
+import { referralsAPI } from '@/services/api';
 import { Referral } from '@/types';
 
 const Referrals: React.FC = () => {
@@ -16,7 +16,7 @@ const Referrals: React.FC = () => {
     setFiltered(filterStatus === 'all' ? referrals : referrals.filter(r => r.status === filterStatus));
   }, [filterStatus, referrals]);
 
-  const loadReferrals = async () => { setReferrals(await mockReferralsAPI.getAll()); };
+  const loadReferrals = async () => { setReferrals(await referralsAPI.getAll()); };
 
   const statusColor = (s: string) => ({
     pending: 'bg-base-300 text-base-600',
