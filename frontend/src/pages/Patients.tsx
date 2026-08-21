@@ -10,16 +10,11 @@ const Patients: React.FC = () => {
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadPatients();
-  }, []);
+  useEffect(() => { loadPatients(); }, []);
 
   useEffect(() => {
-    if (searchQuery) {
-      performSearch();
-    } else {
-      setFilteredPatients(patients);
-    }
+    if (searchQuery) performSearch();
+    else setFilteredPatients(patients);
   }, [searchQuery, patients]);
 
   const loadPatients = async () => {
@@ -39,50 +34,45 @@ const Patients: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Patient Records</h1>
-          <p className="text-gray-600 mt-1">Manage and view patient information</p>
+          <h1 className="page-title">Patient Records</h1>
+          <p className="text-base-500 mt-1 text-sm">Manage and view patient information</p>
         </div>
-        <button
-          onClick={() => navigate('/patients/new')}
-          className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          New Patient
+        <button onClick={() => navigate('/patients/new')}
+          className="neu-btn-primary flex items-center gap-2">
+          <Plus className="w-4 h-4" /> New Patient
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <div className="neu-card p-6">
+        <div className="relative mb-5">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-base-400 w-4 h-4" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, referral ID, or contact number..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Search by name, referral ID, or phone..."
+            className="neu-input w-full pl-10"
           />
         </div>
 
         <div className="space-y-3">
           {filteredPatients.map((patient) => (
-            <div
+            <button
               key={patient.id}
               onClick={() => navigate(`/patients/${patient.id}`)}
-              className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+              className="neu-btn w-full flex items-center gap-4 px-5 py-4 text-left"
             >
-              <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-6 h-6 text-primary-700" />
+              <div className="w-11 h-11 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5 text-primary-600" />
               </div>
               <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <h3 className="font-semibold text-gray-900">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-base-800 text-sm">
                     {patient.firstName} {patient.lastName}
                   </h3>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                    {patient.referralId}
-                  </span>
+                  <span className="neu-badge bg-base-300 text-base-600">{patient.referralId}</span>
                 </div>
-                <div className="flex gap-4 mt-1 text-sm text-gray-600">
+                <div className="flex gap-3 mt-1 text-xs text-base-500">
                   <span>DOB: {new Date(patient.dateOfBirth).toLocaleDateString()}</span>
                   <span>•</span>
                   <span>{patient.contactNumber}</span>
@@ -90,19 +80,19 @@ const Patients: React.FC = () => {
                   <span>{patient.insurance.provider}</span>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500">Last updated</p>
-                <p className="text-sm font-medium text-gray-900">
+              <div className="text-right flex-shrink-0">
+                <p className="text-[10px] text-base-400 uppercase tracking-wider">Updated</p>
+                <p className="text-xs font-semibold text-base-700">
                   {new Date(patient.updatedAt).toLocaleDateString()}
                 </p>
               </div>
-            </div>
+            </button>
           ))}
 
           {filteredPatients.length === 0 && (
-            <div className="text-center py-12">
-              <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">No patients found</p>
+            <div className="neu-pressed rounded-2xl text-center py-14">
+              <User className="w-14 h-14 text-base-300 mx-auto mb-3" />
+              <p className="text-base-500">No patients found</p>
             </div>
           )}
         </div>

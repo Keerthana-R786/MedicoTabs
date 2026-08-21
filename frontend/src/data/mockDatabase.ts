@@ -40,6 +40,58 @@ export const mockUsers: User[] = [
     phone: '+1-555-0303',
     createdAt: '2024-01-05T08:00:00Z',
   },
+  {
+    id: 'user-004',
+    email: 'dr.patel@lakeside.com',
+    firstName: 'Amit',
+    lastName: 'Patel',
+    role: 'specialist_doctor',
+    organization: 'Lakeside Cardiology',
+    organizationId: 'org-004',
+    specialization: 'Cardiology',
+    licenseNumber: 'MD-44521',
+    phone: '+1-555-0404',
+    createdAt: '2024-02-12T08:00:00Z',
+  },
+  {
+    id: 'user-005',
+    email: 'dr.nguyen@coastalortho.com',
+    firstName: 'Linh',
+    lastName: 'Nguyen',
+    role: 'specialist_doctor',
+    organization: 'Coastal Orthopedics',
+    organizationId: 'org-005',
+    specialization: 'Orthopedics',
+    licenseNumber: 'MD-55210',
+    phone: '+1-555-0505',
+    createdAt: '2024-03-01T08:00:00Z',
+  },
+  {
+    id: 'user-006',
+    email: 'dr.reed@northharbor.com',
+    firstName: 'Maya',
+    lastName: 'Reed',
+    role: 'primary_doctor',
+    organization: 'North Harbor Family Medicine',
+    organizationId: 'org-001',
+    specialization: 'Internal Medicine',
+    licenseNumber: 'MD-33108',
+    phone: '+1-555-0606',
+    createdAt: '2024-03-18T08:00:00Z',
+  },
+  {
+    id: 'user-007',
+    email: 'dr.okonkwo@bayderm.com',
+    firstName: 'Chidi',
+    lastName: 'Okonkwo',
+    role: 'specialist_doctor',
+    organization: 'Bay Dermatology',
+    organizationId: 'org-006',
+    specialization: 'Dermatology',
+    licenseNumber: 'MD-77890',
+    phone: '+1-555-0707',
+    createdAt: '2024-04-02T08:00:00Z',
+  },
 ];
 
 // Mock Patients Database
@@ -333,6 +385,71 @@ export const mockReferrals: Referral[] = [
     createdAt: '2025-07-16T10:00:00Z',
     updatedAt: '2025-07-16T10:00:00Z',
   },
+  // Incoming referrals routed to Dr. Priya Shah (user-002) for specialist review
+  {
+    id: 'referral-003',
+    referralNumber: 'RFL-2025-00420',
+    patientId: 'patient-003',
+    patientName: 'Sarah Williams',
+    primaryDoctorId: 'user-001',
+    primaryDoctorName: 'Dr. John Smith',
+    primaryOrganization: 'North Harbor Family Medicine',
+    specialistId: 'user-002',
+    specialistName: 'Dr. Priya Shah',
+    specialistOrganization: 'Lakeside Gastroenterology',
+    requestedSpecialty: 'Gastroenterology',
+    specialistPreference: 'Dr. Priya Shah',
+    referralReason: 'Recurrent abdominal pain and bloating, suspected IBS. Colonoscopy may be needed.',
+    serviceType: 'Consultation and possible colonoscopy',
+    urgency: 'Urgent',
+    status: 'routed',
+    workflowRunId: 'yoxa-run-420-001',
+    acknowledgmentDeadline: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'referral-004',
+    referralNumber: 'RFL-2025-00421',
+    patientId: 'patient-002',
+    patientName: 'Michael Chen',
+    primaryDoctorId: 'user-001',
+    primaryDoctorName: 'Dr. John Smith',
+    primaryOrganization: 'North Harbor Family Medicine',
+    specialistId: 'user-002',
+    specialistName: 'Dr. Priya Shah',
+    specialistOrganization: 'Lakeside Gastroenterology',
+    requestedSpecialty: 'Gastroenterology',
+    referralReason: 'Elevated liver enzymes on recent bloodwork. Needs hepatology review.',
+    serviceType: 'Hepatology consultation',
+    urgency: 'Routine',
+    status: 'routed',
+    workflowRunId: 'yoxa-run-421-001',
+    acknowledgmentDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'referral-005',
+    referralNumber: 'RFL-2025-00422',
+    patientId: 'patient-001',
+    patientName: 'Elena Marquez',
+    primaryDoctorId: 'user-001',
+    primaryDoctorName: 'Dr. John Smith',
+    primaryOrganization: 'North Harbor Family Medicine',
+    specialistId: 'user-002',
+    specialistName: 'Dr. Priya Shah',
+    specialistOrganization: 'Lakeside Gastroenterology',
+    requestedSpecialty: 'Gastroenterology',
+    referralReason: 'Follow-up colonoscopy screening, routine annual check.',
+    serviceType: 'Routine colonoscopy',
+    urgency: 'Routine',
+    status: 'routed',
+    workflowRunId: 'yoxa-run-422-001',
+    acknowledgmentDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+  },
 ];
 
 // Mock Messages Database
@@ -431,9 +548,51 @@ export const mockNotifications: Notification[] = [
     isRead: true,
     createdAt: '2025-07-11T08:45:00Z',
   },
+  {
+    id: 'notif-003',
+    userId: 'user-001',
+    type: 'message',
+    title: 'New care-team message',
+    message: 'HarborCare coordination left a note on the Marquez handoff thread',
+    referralId: 'referral-001',
+    isRead: false,
+    createdAt: '2025-07-16T09:20:00Z',
+    actionUrl: '/messages',
+  },
+  {
+    id: 'notif-004',
+    userId: 'user-002',
+    type: 'referral',
+    title: 'Incoming referral',
+    message: 'New gastroenterology referral from Dr. John Smith needs review',
+    referralId: 'referral-002',
+    isRead: false,
+    createdAt: '2025-07-16T10:00:00Z',
+    actionUrl: '/incoming-referrals',
+  },
+  {
+    id: 'notif-005',
+    userId: 'user-002',
+    type: 'alert',
+    title: 'SLA window',
+    message: 'An urgent incoming referral is approaching the 4-hour response window',
+    isRead: false,
+    createdAt: '2025-07-16T11:15:00Z',
+  },
+  {
+    id: 'notif-006',
+    userId: 'user-003',
+    type: 'system',
+    title: 'Coverage verification complete',
+    message: 'Pre-authorization packet is ready for the HarborCare coordination queue',
+    isRead: true,
+    createdAt: '2025-07-14T16:40:00Z',
+  },
 ];
 
 // Helper functions for mock database operations
+const STORAGE_KEY = 'medicotabs_mock_db';
+
 export const getMockData = () => ({
   users: [...mockUsers],
   patients: [...mockPatients],
@@ -446,12 +605,56 @@ export const getMockData = () => ({
   notifications: [...mockNotifications],
 });
 
-let mockDataStore = getMockData();
+// Try to load persisted database from localStorage, fall back to fresh defaults
+const loadPersistedData = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Merge: keep persisted users/referrals/notifications, fall back to defaults for missing arrays
+      const defaults = getMockData();
+      return {
+        users: [...defaults.users, ...parsed.users?.filter((u: any) => !defaults.users.some((d: any) => d.id === u.id)) || []],
+        patients: parsed.patients || defaults.patients,
+        documents: parsed.documents || defaults.documents,
+        trackers: parsed.trackers || defaults.trackers,
+        referrals: parsed.referrals || defaults.referrals,
+        messages: parsed.messages || defaults.messages,
+        hitlApprovals: parsed.hitlApprovals || defaults.hitlApprovals,
+        coverageVerifications: parsed.coverageVerifications || defaults.coverageVerifications,
+        notifications: parsed.notifications || defaults.notifications,
+      };
+    }
+  } catch {
+    // ignore corrupt data
+  }
+  return getMockData();
+};
+
+let mockDataStore = loadPersistedData();
+
+const persistData = () => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(mockDataStore));
+  } catch {
+    // storage full or unavailable
+  }
+};
 
 export const resetMockDatabase = () => {
   mockDataStore = getMockData();
+  localStorage.removeItem(STORAGE_KEY);
 };
 
-export const getMockDatabase = () => mockDataStore;
+// Wrap getMockDatabase to auto-persist on every read (writes happen in-memory then persist)
+export const getMockDatabase = () => {
+  // We persist after writes, not on every read — this is just a getter
+  return mockDataStore;
+};
+
+// Call this after any mutation to persist changes
+export const persistMockDatabase = () => {
+  persistData();
+};
 
 export default mockDataStore;

@@ -2,155 +2,127 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle, Clock } from 'lucide-react';
 import { mockHITLAPI } from '@/services/mockAPI';
 import { HITLApprovalRequest } from '@/types';
+import { useToast } from '@/contexts/ToastContext';
+import { formatError, formatSuccess } from '@/utils/messages';
 
 const Approvals: React.FC = () => {
   const [approvals, setApprovals] = useState<HITLApprovalRequest[]>([]);
-  const [selectedApproval, setSelectedApproval] = useState<HITLApprovalRequest | null>(null);
+  const [selected, setSelected] = useState<HITLApprovalRequest | null>(null);
   const [customResponse, setCustomResponse] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { success, error: showError } = useToast();
 
-  useEffect(() => {
-    loadApprovals();
-  }, []);
+  useEffect(() => { loadApprovals(); }, []);
 
-  const loadApprovals = async () => {
-    const data = await mockHITLAPI.getPending();
-    setApprovals(data);
-  };
+  const loadApprovals = async () => { setApprovals(await mockHITLAPI.getPending()); };
 
-  const handleRespond = async (selectedOptionId?: string) => {
-    if (!selectedApproval) return;
+  const handleRespond = async (optionId?: string) => {
+    if (!selected) return;
     setSubmitting(true);
-
     try {
-      await mockHITLAPI.respond(
-        selectedApproval.requestId,
-        selectedOptionId,
-        customResponse || undefined
-      );
-      alert('Response submitted successfully! The workflow will now continue.');
+      await mockHITLAPI.respond(selected.requestId, optionId, customResponse || undefined);
+      const msg = formatSuccess('approval-submitted');
+      success(msg.title, msg.description);
       await loadApprovals();
-      setSelectedApproval(null);
+      setSelected(null);
       setCustomResponse('');
-    } catch (error: any) {
-      alert(`Error: ${error.message}`);
-    } finally {
-      setSubmitting(false);
+    } catch (err: any) {
+      const msg = formatError(err.message);
+      showError(msg.title, msg.description);
     }
+    finally { setSubmitting(false); }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Pending Approvals</h1>
-        <p className="text-gray-600 mt-1">Review and respond to workflow approval requests</p>
+        <h1 className="page-title">Pending Approvals</h1>
+        <p className="text-base-500 mt-1 text-sm">Review and respond to workflow approval requests</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Approval Queue</h2>
-          
+        {/* Queue */}
+        <div className="neu-card p-5">
+          <h2 className="font-display text-lg font-bold text-base-900 mb-4">Approval Queue</h2>
           <div className="space-y-3">
-            {approvals.map((approval) => (
-              <div
-                key={approval.id}
-                onClick={() => setSelectedApproval(approval)}
-                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  selectedApproval?.id === approval.id
-                    ? 'border-primary-500 bg-primary-50'
-                    : 'border-gray-200 hover:border-primary-300'
-                }`}
-              >
+            {approvals.map((a) => (
+              <button key={a.id} onClick={() => setSelected(a)}
+                className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                  selected?.id === a.id
+                    ? 'bg-primary-50   border-2 border-primary-300'
+                    : 'neu-flat border-2 border-transparent hover:border-primary-200'
+                }`}>
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900">{approval.title}</h3>
-                  <Clock className="w-5 h-5 text-warning-500" />
+                  <h3 className="font-bold text-sm text-base-800">{a.title}</h3>
+                  <Clock className="w-4 h-4 text-warning-500 flex-shrink-0" />
                 </div>
-                <p className="text-sm text-gray-600 mb-2">{approval.description}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span>Received: {new Date(approval.receivedAt).toLocaleString()}</span>
+                <p className="text-xs text-base-500 mb-2">{a.description}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-base-400">{new Date(a.receivedAt).toLocaleString()}</span>
+                  {a.referralId && (
+                    <span className="neu-badge bg-base-300 text-base-600">{a.referralId}</span>
+                  )}
                 </div>
-                {approval.referralId && (
-                  <div className="mt-2">
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                      Referral ID: {approval.referralId}
-                    </span>
-                  </div>
-                )}
-              </div>
+              </button>
             ))}
-
             {approvals.length === 0 && (
-              <div className="text-center py-12">
-                <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">No pending approvals</p>
+              <div className="neu-pressed rounded-2xl text-center py-14">
+                <CheckCircle className="w-14 h-14 text-base-300 mx-auto mb-3" />
+                <p className="text-base-500 text-sm">No pending approvals</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          {selectedApproval ? (
-            <div className="space-y-6">
+        {/* Detail / Respond */}
+        <div className="neu-card p-6">
+          {selected ? (
+            <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">{selectedApproval.title}</h2>
-                <p className="text-gray-600">{selectedApproval.description}</p>
+                <h2 className="font-display text-lg font-bold text-base-900">{selected.title}</h2>
+                <p className="text-sm text-base-500 mt-1">{selected.description}</p>
               </div>
 
-              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                <p className="text-sm text-primary-800 font-medium mb-1">Workflow Information</p>
-                <p className="text-xs text-primary-700">Run ID: {selectedApproval.workflowRunId}</p>
-                <p className="text-xs text-primary-700">Request ID: {selectedApproval.requestId}</p>
+              <div className="neu-pressed rounded-xl p-4">
+                <p className="text-[10px] font-bold text-primary-600 uppercase tracking-wider mb-1">Workflow Info</p>
+                <p className="text-xs text-base-600">Run: {selected.workflowRunId}</p>
+                <p className="text-xs text-base-600">Request: {selected.requestId}</p>
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-900 mb-3">Select Your Response</h3>
+                <p className="text-[10px] font-bold text-base-500 uppercase tracking-wider mb-3">Select Response</p>
                 <div className="space-y-2">
-                  {selectedApproval.options.map((option) => (
-                    <button
-                      key={option.optionId}
-                      onClick={() => handleRespond(option.optionId)}
+                  {selected.options.map((opt) => (
+                    <button key={opt.optionId} onClick={() => handleRespond(opt.optionId)}
                       disabled={submitting}
-                      className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all disabled:opacity-50"
-                    >
-                      <p className="font-medium text-gray-900">{option.title}</p>
-                      {option.description && (
-                        <p className="text-sm text-gray-600 mt-1">{option.description}</p>
-                      )}
+                      className="neu-btn w-full text-left p-4 disabled:opacity-50">
+                      <p className="font-semibold text-sm text-base-800">{opt.title}</p>
+                      {opt.description && <p className="text-xs text-base-500 mt-1">{opt.description}</p>}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Or Provide Custom Response
-                </label>
-                <textarea
-                  value={customResponse}
-                  onChange={(e) => setCustomResponse(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  rows={4}
-                  placeholder="Enter your custom response..."
-                />
-                <button
-                  onClick={() => handleRespond()}
-                  disabled={!customResponse || submitting}
-                  className="mt-3 w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50"
-                >
+                <label className="block text-[10px] font-semibold text-base-500 mb-1.5 uppercase tracking-wider">Custom Response</label>
+                <textarea value={customResponse} onChange={(e) => setCustomResponse(e.target.value)}
+                  className="neu-input w-full resize-none" rows={3} placeholder="Optional custom response..." />
+                <button onClick={() => handleRespond()} disabled={!customResponse || submitting}
+                  className="neu-btn-primary mt-3 w-full disabled:opacity-50">
                   {submitting ? 'Submitting...' : 'Submit Custom Response'}
                 </button>
               </div>
 
-              <div className="bg-warning-50 border border-warning-200 rounded-lg p-4">
-                <p className="text-sm text-warning-800">
-                  ⚠️ Your response will be sent to YOXA and cannot be changed. The workflow will resume immediately.
+              <div className="neu-flat rounded-xl p-3">
+                <p className="text-xs text-base-600 font-medium">
+                  Your response goes to YOXA and cannot be changed.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="text-center py-16">
-              <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">Select an approval from the queue to respond</p>
+            <div className="neu-pressed rounded-2xl text-center py-16">
+              <CheckCircle className="w-14 h-14 text-base-300 mx-auto mb-3" />
+              <p className="text-base-500 text-sm">Select an approval to respond</p>
             </div>
           )}
         </div>

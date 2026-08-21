@@ -7,6 +7,17 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  signup: (userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: 'primary_doctor' | 'specialist_doctor' | 'coordinator';
+    organization: string;
+    specialization?: string;
+    licenseNumber: string;
+    phone: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -35,13 +46,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(loggedInUser);
   };
 
+  const signup = async (userData: Parameters<typeof mockAuthAPI.signup>[0]) => {
+    const { user: newUser } = await mockAuthAPI.signup(userData);
+    setUser(newUser);
+  };
+
   const logout = async () => {
     await mockAuthAPI.logout();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

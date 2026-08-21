@@ -18,117 +18,119 @@ const FlightTrackerView: React.FC<FlightTrackerViewProps> = ({ tracker }) => {
   const getStageIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Check className="w-5 h-5 text-success-700" />;
+        return <Check className="w-4 h-4 text-success-600" />;
       case 'in_progress':
-        return <Clock className="w-5 h-5 text-warning-500 animate-pulse" />;
+        return <Clock className="w-4 h-4 text-warning-600 animate-pulse" />;
       case 'failed':
       case 'requires_attention':
-        return <AlertCircle className="w-5 h-5 text-danger-500" />;
+        return <AlertCircle className="w-4 h-4 text-danger-600" />;
       default:
-        return <Clock className="w-5 h-5 text-gray-400" />;
+        return <Clock className="w-4 h-4 text-base-400" />;
     }
   };
 
-  const getStageColor = (status: string) => {
+  const getStageStyle = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-success-100 border-success-500';
+        return 'border-success-400 bg-success-50';
       case 'in_progress':
-        return 'bg-warning-100 border-warning-500';
+        return 'border-warning-400 bg-warning-50';
       case 'failed':
       case 'requires_attention':
-        return 'bg-danger-100 border-danger-500';
+        return 'border-danger-400 bg-danger-50';
       default:
-        return 'bg-gray-100 border-gray-300';
+        return 'border-base-300 bg-base-100';
     }
   };
 
-  const urgencyColor = {
-    Emergency: 'bg-danger-500',
-    Urgent: 'bg-warning-500',
-    Routine: 'bg-primary-500',
-  }[tracker.urgency];
+  const getIconBg = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-success-100 shadow-neu-btn';
+      case 'in_progress': return 'bg-warning-100 shadow-neu-btn';
+      case 'failed':
+      case 'requires_attention': return 'bg-danger-100 shadow-neu-btn';
+      default: return 'bg-base-200 shadow-neu-btn';
+    }
+  };
+
+  const urgencyBadge = ({
+    Emergency: 'bg-danger-500 text-white',
+    Urgent: 'bg-warning-500 text-white',
+    Routine: 'bg-primary-500 text-white',
+  }[tracker.urgency] || 'bg-base-500 text-white');
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="neu-card p-6">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-            <Plane className="w-6 h-6 text-primary-700" />
+          <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center shadow-neu-btn">
+            <Plane className="w-5 h-5 text-primary-600" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Flight Tracker</h3>
-            <p className="text-sm text-gray-600">{tracker.visitReason}</p>
+            <h3 className="text-base font-bold text-base-800">Flight Tracker</h3>
+            <p className="text-xs text-base-500">{tracker.visitReason}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`px-3 py-1 rounded-full text-white text-xs font-semibold ${urgencyColor}`}>
-            {tracker.urgency}
-          </span>
+          <span className={`neu-badge ${urgencyBadge}`}>{tracker.urgency}</span>
           {tracker.signedOffAt && (
-            <span className="px-3 py-1 rounded-full bg-success-100 text-success-700 text-xs font-semibold">
-              Signed Off
-            </span>
+            <span className="neu-badge bg-success-100 text-success-700">Signed Off</span>
           )}
         </div>
       </div>
 
-      <div className="space-y-4">
+      {/* Stages */}
+      <div className="space-y-0">
         {tracker.stages.map((stage, index) => (
           <div key={stage.stage} className="relative">
+            {/* Connector line */}
             {index < tracker.stages.length - 1 && (
-              <div className="absolute left-6 top-12 w-0.5 h-16 bg-gray-200" />
+              <div className="absolute left-[22px] top-[44px] w-[2px] h-10 bg-base-300" />
             )}
-            
-            <div className={`flex gap-4 p-4 rounded-lg border-2 ${getStageColor(stage.status)}`}>
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border-2 border-current">
-                  {getStageIcon(stage.status)}
-                </div>
+
+            <div className={`flex gap-4 p-4 rounded-xl border ${getStageStyle(stage.status)}`}>
+              {/* Icon */}
+              <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center ${getIconBg(stage.status)}`}>
+                {getStageIcon(stage.status)}
               </div>
 
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-gray-900">{stageLabels[stage.stage]}</h4>
-                  <span className="text-xs text-gray-500 capitalize">{stage.status.replace('_', ' ')}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="font-bold text-sm text-base-800">{stageLabels[stage.stage]}</h4>
+                  <span className="text-[10px] text-base-400 uppercase tracking-wider">
+                    {stage.status.replace('_', ' ')}
+                  </span>
                 </div>
 
                 {stage.notes && (
-                  <p className="text-sm text-gray-600 mb-2">{stage.notes}</p>
+                  <p className="text-xs text-base-600 mb-1.5">{stage.notes}</p>
                 )}
 
-                {stage.startedAt && (
-                  <p className="text-xs text-gray-500">
-                    Started: {new Date(stage.startedAt).toLocaleString()}
-                  </p>
-                )}
+                <div className="flex gap-4 text-[10px] text-base-400">
+                  {stage.startedAt && <span>Started: {new Date(stage.startedAt).toLocaleString()}</span>}
+                  {stage.completedAt && <span>Completed: {new Date(stage.completedAt).toLocaleString()}</span>}
+                </div>
 
-                {stage.completedAt && (
-                  <p className="text-xs text-gray-500">
-                    Completed: {new Date(stage.completedAt).toLocaleString()}
-                  </p>
-                )}
-
+                {/* Agent actions */}
                 {stage.agentActions && stage.agentActions.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-xs font-semibold text-gray-700">Agent Actions:</p>
+                    <p className="text-[10px] font-bold text-base-500 uppercase tracking-wider">Agent Actions</p>
                     {stage.agentActions.map((action) => (
-                      <div key={action.id} className="bg-white p-2 rounded text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-700">{action.toolName}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${
+                      <div key={action.id} className="neu-pressed rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-base-700">{action.toolName}</span>
+                          <span className={`neu-badge ${
                             action.status === 'success' ? 'bg-success-100 text-success-700' :
                             action.status === 'failed' ? 'bg-danger-100 text-danger-700' :
                             'bg-warning-100 text-warning-700'
-                          }`}>
-                            {action.status}
-                          </span>
+                          }`}>{action.status}</span>
                         </div>
-                        <p className="text-gray-600 mt-1">{action.description}</p>
+                        <p className="text-xs text-base-600">{action.description}</p>
                         {action.result && (
-                          <p className="text-gray-500 mt-1 italic">{action.result}</p>
+                          <p className="text-[10px] text-base-500 mt-1 italic">{action.result}</p>
                         )}
-                        <p className="text-gray-400 mt-1">{new Date(action.timestamp).toLocaleString()}</p>
+                        <p className="text-[10px] text-base-400 mt-1">{new Date(action.timestamp).toLocaleString()}</p>
                       </div>
                     ))}
                   </div>
@@ -140,9 +142,9 @@ const FlightTrackerView: React.FC<FlightTrackerViewProps> = ({ tracker }) => {
       </div>
 
       {tracker.workflowRunId && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-500">
-            <span className="font-semibold">Workflow Run ID:</span> {tracker.workflowRunId}
+        <div className="mt-4 neu-pressed rounded-xl p-3">
+          <p className="text-[10px] text-base-500">
+            <span className="font-bold">Workflow Run:</span> {tracker.workflowRunId}
           </p>
         </div>
       )}

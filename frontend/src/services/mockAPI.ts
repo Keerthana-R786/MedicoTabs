@@ -1,4 +1,4 @@
-import { getMockDatabase } from '@/data/mockDatabase';
+import { getMockDatabase, persistMockDatabase } from '@/data/mockDatabase';
 import { Patient, Referral, FlightTracker, PatientDocument, HITLApprovalRequest, Message, Notification, User } from '@/types';
 
 // Mock API service using local data
@@ -16,6 +16,43 @@ export const mockAuthAPI = {
       return { user, token };
     }
     throw new Error('Invalid credentials');
+  },
+  signup: async (userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: 'primary_doctor' | 'specialist_doctor' | 'coordinator';
+    organization: string;
+    specialization?: string;
+    licenseNumber: string;
+    phone: string;
+  }) => {
+    await delay(600);
+    const db = getMockDatabase();
+    const existing = db.users.find(u => u.email === userData.email);
+    if (existing) {
+      throw new Error('An account with this email already exists');
+    }
+    const newUser: User = {
+      id: `user-${Date.now()}`,
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      role: userData.role,
+      organization: userData.organization,
+      organizationId: `org-${Date.now()}`,
+      specialization: userData.specialization,
+      licenseNumber: userData.licenseNumber,
+      phone: userData.phone,
+      createdAt: new Date().toISOString(),
+    };
+    db.users.push(newUser);
+    persistMockDatabase();
+    const token = `mock-token-${newUser.id}`;
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('current_user', JSON.stringify(newUser));
+    return { user: newUser, token };
   },
   logout: async () => {
     await delay(300);
@@ -52,6 +89,7 @@ export const mockPatientsAPI = {
       ...patientData,
     } as Patient;
     db.patients.push(newPatient);
+    persistMockDatabase();
     return newPatient;
   },
   update: async (id: string, patientData: Partial<Patient>): Promise<Patient> => {
@@ -60,6 +98,7 @@ export const mockPatientsAPI = {
     const index = db.patients.findIndex(p => p.id === id);
     if (index === -1) throw new Error('Patient not found');
     db.patients[index] = { ...db.patients[index], ...patientData, updatedAt: new Date().toISOString() };
+    persistMockDatabase();
     return db.patients[index];
   },
   search: async (query: string): Promise<Patient[]> => {
@@ -95,6 +134,7 @@ export const mockDocumentsAPI = {
       size: file.size,
     };
     db.documents.push(newDoc);
+    persistMockDatabase();
     return newDoc;
   },
   download: async (documentId: string): Promise<Blob> => {
@@ -106,6 +146,7 @@ export const mockDocumentsAPI = {
     const db = getMockDatabase();
     const index = db.documents.findIndex(d => d.id === documentId);
     if (index !== -1) db.documents.splice(index, 1);
+    persistMockDatabase();
   },
 };
 
@@ -138,6 +179,7 @@ export const mockFlightTrackerAPI = {
       ...trackerData,
     } as FlightTracker;
     db.trackers.push(newTracker);
+    persistMockDatabase();
     return newTracker;
   },
   signOff: async (trackerId: string, notes?: string): Promise<FlightTracker> => {
@@ -150,6 +192,7 @@ export const mockFlightTrackerAPI = {
     tracker.completedAt = new Date().toISOString();
     const currentUser = JSON.parse(localStorage.getItem('current_user') || '{}');
     tracker.signedOffBy = currentUser.id;
+    persistMockDatabase();
     return tracker;
   },
 };
@@ -184,6 +227,7 @@ export const mockReferralsAPI = {
       ...referralData,
     } as Referral;
     db.referrals.push(newReferral);
+    persistMockDatabase();
     return { referral: newReferral, workflowRunId };
   },
   update: async (id: string, referralData: Partial<Referral>): Promise<Referral> => {
@@ -192,7 +236,26 @@ export const mockReferralsAPI = {
     const index = db.referrals.findIndex(r => r.id === id);
     if (index === -1) throw new Error('Referral not found');
     db.referrals[index] = { ...db.referrals[index], ...referralData, updatedAt: new Date().toISOString() };
+    persistMockDatabase();
     return db.referrals[index];
+  },
+  getIncomingForSpecialist: async (specialistId: string): Promise<Referral[]> => {
+    await delay(300);
+    return getMockDatabase().referrals.filter(
+      r => r.specialistId === specialistId && ['routed', 'pending'].includes(r.status)
+    );
+  },
+  getAcceptedForSpecialist: async (specialistId: string): Promise<Referral[]> => {
+    await delay(300);
+    return getMockDatabase().referrals.filter(
+      r => r.specialistId === specialistId && ['accepted'].includes(r.status)
+    );
+  },
+  getCompletedForSpecialist: async (specialistId: string): Promise<Referral[]> => {
+    await delay(300);
+    return getMockDatabase().referrals.filter(
+      r => r.specialistId === specialistId && ['completed', 'archived'].includes(r.status)
+    );
   },
   acceptReferral: async (id: string, notes?: string): Promise<Referral> => {
     await delay(500);
@@ -201,6 +264,7 @@ export const mockReferralsAPI = {
     if (!referral) throw new Error('Referral not found');
     referral.status = 'accepted';
     referral.updatedAt = new Date().toISOString();
+    persistMockDatabase();
     return referral;
   },
   denyReferral: async (id: string, reason: string): Promise<Referral> => {
@@ -210,6 +274,7 @@ export const mockReferralsAPI = {
     if (!referral) throw new Error('Referral not found');
     referral.status = 'denied';
     referral.updatedAt = new Date().toISOString();
+    persistMockDatabase();
     return referral;
   },
 };
@@ -234,6 +299,7 @@ export const mockMessagesAPI = {
       ...messageData,
     } as Message;
     db.messages.push(newMessage);
+    persistMockDatabase();
     return newMessage;
   },
   markAsRead: async (messageId: string): Promise<void> => {
@@ -241,6 +307,7 @@ export const mockMessagesAPI = {
     const db = getMockDatabase();
     const message = db.messages.find(m => m.id === messageId);
     if (message) message.isRead = true;
+    persistMockDatabase();
   },
 };
 
@@ -267,6 +334,7 @@ export const mockHITLAPI = {
     approval.overrideMessage = overrideMessage;
     approval.answeredBy = currentUser.id;
     approval.answeredAt = new Date().toISOString();
+    persistMockDatabase();
   },
 };
 
@@ -288,12 +356,14 @@ export const mockNotificationsAPI = {
     const db = getMockDatabase();
     const notification = db.notifications.find(n => n.id === notificationId);
     if (notification) notification.isRead = true;
+    persistMockDatabase();
   },
   markAllAsRead: async (): Promise<void> => {
     await delay(300);
     const currentUser = JSON.parse(localStorage.getItem('current_user') || '{}');
     const db = getMockDatabase();
     db.notifications.filter(n => n.userId === currentUser.id).forEach(n => n.isRead = true);
+    persistMockDatabase();
   },
 };
 
@@ -309,5 +379,37 @@ export const mockStatsAPI = {
       completedToday: db.trackers.filter(t => t.completedAt && new Date(t.completedAt).toDateString() === new Date().toDateString()).length,
       urgentCases: db.referrals.filter(r => r.urgency === 'Urgent' && r.status !== 'completed').length,
     };
+  },
+};
+
+export const mockDoctorsAPI = {
+  getAll: async (): Promise<User[]> => {
+    await delay(300);
+    return getMockDatabase().users.filter(
+      (u) => u.role === 'primary_doctor' || u.role === 'specialist_doctor'
+    );
+  },
+  search: async (query: string): Promise<User[]> => {
+    await delay(200);
+    const q = query.toLowerCase().trim();
+    return getMockDatabase().users.filter((u) => {
+      if (u.role !== 'primary_doctor' && u.role !== 'specialist_doctor') return false;
+      return (
+        u.firstName.toLowerCase().includes(q) ||
+        u.lastName.toLowerCase().includes(q) ||
+        u.organization.toLowerCase().includes(q) ||
+        (u.specialization || '').toLowerCase().includes(q) ||
+        u.licenseNumber.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      );
+    });
+  },
+  getById: async (id: string): Promise<User> => {
+    await delay(200);
+    const doctor = getMockDatabase().users.find(
+      (u) => u.id === id && (u.role === 'primary_doctor' || u.role === 'specialist_doctor')
+    );
+    if (!doctor) throw new Error('Doctor not found');
+    return doctor;
   },
 };

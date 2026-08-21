@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Filter } from 'lucide-react';
+import { FileText, Plus, Filter, Calendar } from 'lucide-react';
 import { mockReferralsAPI } from '@/services/mockAPI';
 import { Referral } from '@/types';
 
@@ -8,166 +8,128 @@ const Referrals: React.FC = () => {
   const navigate = useNavigate();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filteredReferrals, setFilteredReferrals] = useState<Referral[]>([]);
+  const [filtered, setFiltered] = useState<Referral[]>([]);
+
+  useEffect(() => { loadReferrals(); }, []);
 
   useEffect(() => {
-    loadReferrals();
-  }, []);
-
-  useEffect(() => {
-    if (filterStatus === 'all') {
-      setFilteredReferrals(referrals);
-    } else {
-      setFilteredReferrals(referrals.filter(r => r.status === filterStatus));
-    }
+    setFiltered(filterStatus === 'all' ? referrals : referrals.filter(r => r.status === filterStatus));
   }, [filterStatus, referrals]);
 
-  const loadReferrals = async () => {
-    const data = await mockReferralsAPI.getAll();
-    setReferrals(data);
-  };
+  const loadReferrals = async () => { setReferrals(await mockReferralsAPI.getAll()); };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: 'bg-gray-100 text-gray-700',
-      routed: 'bg-primary-100 text-primary-700',
-      accepted: 'bg-success-100 text-success-700',
-      denied: 'bg-danger-100 text-danger-700',
-      rerouted: 'bg-warning-100 text-warning-700',
-      completed: 'bg-success-100 text-success-700',
-      archived: 'bg-gray-100 text-gray-700',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-700';
-  };
+  const statusColor = (s: string) => ({
+    pending: 'bg-base-300 text-base-600',
+    routed: 'bg-primary-100 text-primary-700',
+    accepted: 'bg-success-100 text-success-700',
+    denied: 'bg-danger-100 text-danger-700',
+    rerouted: 'bg-warning-100 text-warning-700',
+    completed: 'bg-success-100 text-success-700',
+    archived: 'bg-base-300 text-base-600',
+  }[s] || 'bg-base-300 text-base-600');
 
-  const getUrgencyColor = (urgency: string) => {
-    const colors: Record<string, string> = {
-      Emergency: 'bg-danger-500 text-white',
-      Urgent: 'bg-warning-500 text-white',
-      Routine: 'bg-primary-500 text-white',
-    };
-    return colors[urgency] || 'bg-gray-500 text-white';
-  };
+  const urgencyColor = (u: string) => ({
+    Emergency: 'bg-danger-500 text-white',
+    Urgent: 'bg-warning-500 text-white',
+    Routine: 'bg-primary-500 text-white',
+  }[u] || 'bg-base-500 text-white');
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Referrals</h1>
-          <p className="text-gray-600 mt-1">Manage specialist referrals and track workflow progress</p>
+          <h1 className="page-title">Referrals</h1>
+          <p className="text-base-500 mt-1 text-sm">Manage specialist referrals and track workflow progress</p>
         </div>
-        <button
-          onClick={() => navigate('/referrals/new')}
-          className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          New Referral
+        <button onClick={() => navigate('/referrals/new')}
+          className="neu-btn-primary flex items-center gap-2">
+          <Plus className="w-4 h-4" /> New Referral
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <div className="flex gap-2 flex-wrap">
-            {['all', 'pending', 'routed', 'accepted', 'denied', 'completed'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                  filterStatus === status
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
+      <div className="neu-card p-6">
+        {/* Filter bar — inset */}
+        <div className="neu-pressed rounded-xl p-2 flex items-center gap-2 mb-5 flex-wrap">
+          <Filter className="w-4 h-4 text-base-400 mx-2" />
+          {['all', 'pending', 'routed', 'accepted', 'denied', 'completed'].map((s) => (
+            <button key={s} onClick={() => setFilterStatus(s)}
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold capitalize transition-all duration-200 ${
+                filterStatus === s
+                  ? 'bg-primary-50 text-primary-700 border border-primary-100'
+                  : 'text-base-500 hover:text-base-700'
+              }`}>
+              {s}
+            </button>
+          ))}
         </div>
 
         <div className="space-y-3">
-          {filteredReferrals.map((referral) => (
-            <div
-              key={referral.id}
-              onClick={() => navigate(`/patients/${referral.patientId}`)}
-              className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-            >
+          {filtered.map((ref) => (
+            <button key={ref.id} onClick={() => navigate(`/patients/${ref.patientId}`)}
+              className="neu-btn w-full text-left px-5 py-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-6 h-6 text-primary-700" />
+                  <div className="w-11 h-11 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-5 h-5 text-primary-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{referral.referralNumber}</h3>
-                    <p className="text-sm text-gray-600">{referral.patientName}</p>
+                    <h3 className="font-bold text-base-800 text-sm">{ref.referralNumber}</h3>
+                    <p className="text-xs text-base-500">{ref.patientName}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getUrgencyColor(referral.urgency)}`}>
-                    {referral.urgency}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(referral.status)}`}>
-                    {referral.status}
-                  </span>
+                  <span className={`neu-badge ${urgencyColor(ref.urgency)}`}>{ref.urgency}</span>
+                  <span className={`neu-badge capitalize ${statusColor(ref.status)}`}>{ref.status}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                 <div>
-                  <p className="text-gray-500 text-xs">Specialty</p>
-                  <p className="font-medium text-gray-900">{referral.requestedSpecialty}</p>
+                  <p className="text-base-400 uppercase tracking-wider text-[10px]">Specialty</p>
+                  <p className="font-semibold text-base-800">{ref.requestedSpecialty}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs">Primary Doctor</p>
-                  <p className="font-medium text-gray-900">{referral.primaryDoctorName}</p>
+                  <p className="text-base-400 uppercase tracking-wider text-[10px]">Primary Doctor</p>
+                  <p className="font-semibold text-base-800">{ref.primaryDoctorName}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs">Specialist</p>
-                  <p className="font-medium text-gray-900">{referral.specialistName || 'Pending'}</p>
+                  <p className="text-base-400 uppercase tracking-wider text-[10px]">Specialist</p>
+                  <p className="font-semibold text-base-800">{ref.specialistName || 'Pending'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs">Created</p>
-                  <p className="font-medium text-gray-900">
-                    {new Date(referral.createdAt).toLocaleDateString()}
-                  </p>
+                  <p className="text-base-400 uppercase tracking-wider text-[10px]">Created</p>
+                  <p className="font-semibold text-base-800">{new Date(ref.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Reason:</span> {referral.referralReason}
+              <div className="mt-3 pt-3 border-t border-base-300/50">
+                <p className="text-xs text-base-600">
+                  <span className="font-semibold text-base-500">Reason:</span> {ref.referralReason}
                 </p>
               </div>
 
-              {referral.workflowRunId && (
-                <div className="mt-2">
-                  <span className="text-xs text-gray-500">
-                    Workflow: {referral.workflowRunId}
+              {ref.appointmentDetails && (
+                <div className="mt-2 flex items-center gap-3 text-[10px] text-base-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className="w-3 h-3" aria-hidden />
+                    {new Date(ref.appointmentDetails.date).toLocaleDateString()} at {ref.appointmentDetails.time}
                   </span>
-                </div>
-              )}
-
-              {referral.appointmentDetails && (
-                <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
-                  <span>📅 Appointment: {new Date(referral.appointmentDetails.date).toLocaleDateString()} at {referral.appointmentDetails.time}</span>
-                  {referral.attendanceStatus && (
-                    <span className={`px-2 py-1 rounded ${
-                      referral.attendanceStatus === 'attended' ? 'bg-success-100 text-success-700' :
-                      referral.attendanceStatus === 'missed' ? 'bg-danger-100 text-danger-700' :
+                  {ref.attendanceStatus && (
+                    <span className={`neu-badge ${
+                      ref.attendanceStatus === 'attended' ? 'bg-success-100 text-success-700' :
+                      ref.attendanceStatus === 'missed' ? 'bg-danger-100 text-danger-700' :
                       'bg-warning-100 text-warning-700'
-                    }`}>
-                      {referral.attendanceStatus}
-                    </span>
+                    }`}>{ref.attendanceStatus}</span>
                   )}
                 </div>
               )}
-            </div>
+            </button>
           ))}
 
-          {filteredReferrals.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">No referrals found</p>
+          {filtered.length === 0 && (
+            <div className="neu-pressed rounded-2xl text-center py-14">
+              <FileText className="w-14 h-14 text-base-300 mx-auto mb-3" />
+              <p className="text-base-500">No referrals found</p>
             </div>
           )}
         </div>

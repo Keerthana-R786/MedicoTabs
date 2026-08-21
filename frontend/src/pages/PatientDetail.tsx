@@ -13,175 +13,130 @@ const PatientDetail: React.FC = () => {
   const [trackers, setTrackers] = useState<FlightTracker[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'documents' | 'trackers'>('info');
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (id) loadPatientData();
-  }, [id]);
+  useEffect(() => { if (id) loadPatientData(); }, [id]);
 
   const loadPatientData = async () => {
     if (!id) return;
-    const patientData = await mockPatientsAPI.getById(id);
-    setPatient(patientData);
-    
-    const docs = await mockDocumentsAPI.getByPatientId(id);
-    setDocuments(docs);
-    
-    const trackersData = await mockFlightTrackerAPI.getByPatientId(id);
-    setTrackers(trackersData);
-
-    const referralsData = await mockReferralsAPI.getByPatientId(id);
-    setReferrals(referralsData);
+    setPatient(await mockPatientsAPI.getById(id));
+    setDocuments(await mockDocumentsAPI.getByPatientId(id));
+    setTrackers(await mockFlightTrackerAPI.getByPatientId(id));
+    setReferrals(await mockReferralsAPI.getByPatientId(id));
   };
 
   const handleStartTracking = async () => {
     if (!patient) return;
     const visitReason = prompt('Enter visit reason:');
     if (!visitReason) return;
-    
     const tracker = await mockFlightTrackerAPI.create({
-      patientId: patient.id,
-      visitReason,
-      urgency: 'Routine',
+      patientId: patient.id, visitReason, urgency: 'Routine',
     });
     setTrackers([...trackers, tracker]);
     setActiveTab('trackers');
-  };
-
-  const handleCreateReferral = () => {
-    navigate(`/referrals/new?patientId=${patient?.id}`);
   };
 
   const handleDownload = async (doc: PatientDocument) => {
     const blob = await mockDocumentsAPI.download(doc.id);
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = doc.fileName;
-    a.click();
+    a.href = url; a.download = doc.fileName; a.click();
   };
 
-  if (!patient) return <div>Loading...</div>;
+  if (!patient) return <div className="text-base-500 p-10 text-center">Loading...</div>;
+
+  const tabs = [
+    { key: 'info' as const, label: 'Info' },
+    { key: 'documents' as const, label: 'Documents' },
+    { key: 'trackers' as const, label: 'Trackers' },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/patients')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-6 h-6 text-gray-600" />
+        <button onClick={() => navigate('/patients')}
+          className="neu-btn w-10 h-10 flex items-center justify-center rounded-full p-0">
+          <ArrowLeft className="w-5 h-5 text-base-500" />
         </button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="page-title">
             {patient.firstName} {patient.lastName}
           </h1>
-          <p className="text-gray-600 mt-1">{patient.referralId}</p>
+          <p className="text-base-500 text-sm mt-0.5">{patient.referralId}</p>
         </div>
-        <button
-          onClick={handleStartTracking}
-          className="flex items-center gap-2 bg-success-500 hover:bg-success-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plane className="w-5 h-5" />
-          Start Tracking
+        <button onClick={handleStartTracking}
+          className="neu-btn-success flex items-center gap-2 text-sm">
+          <Plane className="w-4 h-4" /> Start Tracking
         </button>
-        <button
-          onClick={handleCreateReferral}
-          className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Create Referral
+        <button onClick={() => navigate(`/referrals/new?patientId=${patient?.id}`)}
+          className="neu-btn-primary flex items-center gap-2 text-sm">
+          <Plus className="w-4 h-4" /> Create Referral
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="border-b border-gray-200">
-          <div className="flex gap-4 px-6">
-            {['info', 'documents', 'trackers'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab as any)}
-                className={`py-4 px-2 border-b-2 font-medium transition-colors capitalize ${
-                  activeTab === tab
-                    ? 'border-primary-500 text-primary-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+      <div className="neu-card overflow-hidden">
+        {/* Tab bar — inset */}
+        <div className="p-2 mx-6 mt-4 neu-pressed rounded-xl flex gap-1">
+          {tabs.map((tab) => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                activeTab === tab.key
+                  ? 'bg-primary-50 text-primary-700 border border-primary-100'
+                  : 'text-base-500 hover:text-base-700'
+              }`}>
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className="p-6">
           {activeTab === 'info' && (
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Personal Information</h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500">Date of Birth</p>
-                    <p className="font-medium text-gray-900">{new Date(patient.dateOfBirth).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Gender</p>
-                    <p className="font-medium text-gray-900 capitalize">{patient.gender}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Contact Number</p>
-                    <p className="font-medium text-gray-900">{patient.contactNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Email</p>
-                    <p className="font-medium text-gray-900">{patient.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Address</p>
-                    <p className="font-medium text-gray-900">{patient.address}</p>
-                  </div>
+                <h3 className="font-bold text-base-800 mb-3 text-sm uppercase tracking-wider">Personal Information</h3>
+                <div className="neu-pressed rounded-2xl p-4 space-y-3">
+                  {[
+                    ['Date of Birth', new Date(patient.dateOfBirth).toLocaleDateString()],
+                    ['Gender', patient.gender],
+                    ['Contact', patient.contactNumber],
+                    ['Email', patient.email],
+                    ['Address', patient.address],
+                  ].map(([label, val]) => (
+                    <div key={label}>
+                      <p className="text-[10px] text-base-400 uppercase tracking-wider">{label}</p>
+                      <p className="text-sm font-medium text-base-800">{val}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Medical Information</h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500">Blood Group</p>
-                    <p className="font-medium text-gray-900">{patient.bloodGroup || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Allergies</p>
-                    <p className="font-medium text-gray-900">
-                      {patient.allergies?.length ? patient.allergies.join(', ') : 'None'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Insurance Provider</p>
-                    <p className="font-medium text-gray-900">{patient.insurance.provider}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Policy Number</p>
-                    <p className="font-medium text-gray-900">{patient.insurance.policyNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Member ID</p>
-                    <p className="font-medium text-gray-900">{patient.insurance.memberId}</p>
-                  </div>
+                <h3 className="font-bold text-base-800 mb-3 text-sm uppercase tracking-wider">Medical Information</h3>
+                <div className="neu-pressed rounded-2xl p-4 space-y-3">
+                  {[
+                    ['Blood Group', patient.bloodGroup || 'N/A'],
+                    ['Allergies', patient.allergies?.length ? patient.allergies.join(', ') : 'None'],
+                    ['Insurance', patient.insurance.provider],
+                    ['Policy', patient.insurance.policyNumber],
+                    ['Member ID', patient.insurance.memberId],
+                  ].map(([label, val]) => (
+                    <div key={label}>
+                      <p className="text-[10px] text-base-400 uppercase tracking-wider">{label}</p>
+                      <p className="text-sm font-medium text-base-800">{val}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-
               {referrals.length > 0 && (
                 <div className="col-span-2">
-                  <h3 className="font-semibold text-gray-900 mb-4">Referral History</h3>
+                  <h3 className="font-bold text-base-800 mb-3 text-sm uppercase tracking-wider">Referral History</h3>
                   <div className="space-y-2">
                     {referrals.map(ref => (
-                      <div key={ref.id} className="p-3 bg-gray-50 rounded-lg">
+                      <div key={ref.id} className="neu-flat rounded-xl p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-medium text-gray-900">{ref.referralNumber}</p>
-                            <p className="text-sm text-gray-600">{ref.referralReason}</p>
+                            <p className="font-bold text-sm text-base-800">{ref.referralNumber}</p>
+                            <p className="text-xs text-base-500 mt-0.5">{ref.referralReason}</p>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          <span className={`neu-badge ${
                             ref.status === 'completed' ? 'bg-success-100 text-success-700' :
                             ref.status === 'accepted' ? 'bg-primary-100 text-primary-700' :
                             'bg-warning-100 text-warning-700'
@@ -200,45 +155,36 @@ const PatientDetail: React.FC = () => {
           {activeTab === 'documents' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Documents</h3>
-                <button
-                  onClick={() => setUploadModalOpen(true)}
-                  className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload
+                <h3 className="font-bold text-base-800 text-sm uppercase tracking-wider">Documents</h3>
+                <button className="neu-btn-primary flex items-center gap-2 text-sm py-2 px-4">
+                  <Upload className="w-4 h-4" /> Upload
                 </button>
               </div>
-
               <div className="space-y-2">
                 {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                  >
+                  <div key={doc.id} className="neu-flat flex items-center justify-between px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <FileText className="w-8 h-8 text-primary-500" />
+                      <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-primary-600" />
+                      </div>
                       <div>
-                        <p className="font-medium text-gray-900">{doc.fileName}</p>
-                        <p className="text-sm text-gray-500">
-                          {doc.category.replace('_', ' ')} • {(doc.size / 1024).toFixed(0)} KB • 
+                        <p className="font-semibold text-sm text-base-800">{doc.fileName}</p>
+                        <p className="text-xs text-base-500">
+                          {doc.category.replace('_', ' ')} • {(doc.size / 1024).toFixed(0)} KB •{' '}
                           {new Date(doc.uploadedAt).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDownload(doc)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <Download className="w-5 h-5 text-gray-600" />
+                    <button onClick={() => handleDownload(doc)}
+                      className="neu-btn w-9 h-9 flex items-center justify-center rounded-full p-0">
+                      <Download className="w-4 h-4 text-base-500" />
                     </button>
                   </div>
                 ))}
-
                 {documents.length === 0 && (
-                  <div className="text-center py-12">
-                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600">No documents uploaded</p>
+                  <div className="neu-pressed rounded-2xl text-center py-12">
+                    <FileText className="w-14 h-14 text-base-300 mx-auto mb-3" />
+                    <p className="text-base-500 text-sm">No documents uploaded</p>
                   </div>
                 )}
               </div>
@@ -250,15 +196,12 @@ const PatientDetail: React.FC = () => {
               {trackers.map((tracker) => (
                 <FlightTrackerView key={tracker.id} tracker={tracker} />
               ))}
-
               {trackers.length === 0 && (
-                <div className="text-center py-12">
-                  <Plane className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600">No active trackers</p>
-                  <button
-                    onClick={handleStartTracking}
-                    className="mt-4 text-primary-600 hover:text-primary-700 font-medium"
-                  >
+                <div className="neu-pressed rounded-2xl text-center py-12">
+                  <Plane className="w-14 h-14 text-base-300 mx-auto mb-3" />
+                  <p className="text-base-500 text-sm">No active trackers</p>
+                  <button onClick={handleStartTracking}
+                    className="mt-3 text-primary-500 hover:text-primary-600 font-semibold text-sm transition-colors">
                     Start tracking a visit
                   </button>
                 </div>

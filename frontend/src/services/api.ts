@@ -3,7 +3,7 @@ import { Patient, Referral, FlightTracker, PatientDocument, HITLApprovalRequest,
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:5000';
 
-console.log('🔗 API Base URL:', API_BASE_URL);
+console.log('API Base URL:', API_BASE_URL);
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
