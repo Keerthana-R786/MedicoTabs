@@ -46,7 +46,7 @@ export async function triggerWorkflow(referralData) {
       payload,
       {
         headers: {
-          'Authorization': `Bearer ${yoxaConfig.deploymentSecret}`,
+          'X-Yoxa-Deployment-Secret': yoxaConfig.deploymentSecret, // YOXA uses X-Yoxa-Deployment-Secret header, not Authorization
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey, // REQUIRED by YOXA
         },
