@@ -4,6 +4,13 @@ import { triggerWorkflow } from '../services/yoxaService.js';
 
 const router = express.Router();
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Returns the value if it is a valid UUID, otherwise null (protects FK columns) */
+function safeUuid(value) {
+  return typeof value === 'string' && UUID_RE.test(value) ? value : null;
+}
+
 /**
  * POST /api/referrals
  * Create a new referral and trigger YOXA workflow
@@ -105,7 +112,7 @@ router.post('/', async (req, res) => {
         referral_number: referralNumber,
         patient_id: patientId,
         patient_name: patientName,
-        primary_doctor_id: primaryDoctorId || null, // Set to null if not provided or invalid
+        primary_doctor_id: safeUuid(primaryDoctorId),
         primary_doctor_name: primaryDoctorName,
         primary_organization: primaryOrganization,
         requested_specialty: requestedSpecialty,
@@ -204,7 +211,7 @@ router.post('/', async (req, res) => {
       await supabase
         .from('notifications')
         .insert({
-          user_id: primaryDoctorId,
+          user_id: safeUuid(primaryDoctorId),
           type: 'referral',
           title: 'Referral Created',
           message: `Referral ${referralNumber} created and workflow initiated for ${patientName}`,

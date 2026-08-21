@@ -3,47 +3,51 @@ import { supabase } from '../config/database.js';
 
 const router = express.Router();
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Map a users table row to the camelCase shape the frontend expects */
+function toPublicUser(row) {
+  return {
+    id: row.id,
+    email: row.email,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    role: row.role,
+    organization: row.organization,
+    organizationId: row.organization_id,
+    specialization: row.specialization,
+    licenseNumber: row.license_number,
+    phone: row.phone,
+    createdAt: row.created_at,
+  };
+}
+
 /**
  * POST /api/auth/login
- * Simple login - checks if user exists in database
+ * Checks the user exists in the database and returns a uid-bound token
  */
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    
+    const { email } = req.body;
+
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
-    
-    // For demo: Get user by email (no password validation for now)
+
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
       .eq('email', email)
       .single();
-    
+
     if (error || !user) {
-      // Return mock user for demo if not found
-      const mockUser = {
-        id: 'user-001',
-        email: email,
-        firstName: 'Sarah',
-        lastName: 'Smith',
-        role: 'primary_doctor',
-        organization: 'North Harbor Family Medicine',
-        organizationId: 'org-001',
-        specialization: null,
-        licenseNumber: 'MD-12345',
-        phone: '+1-555-0100',
-        createdAt: new Date().toISOString()
-      };
-      return res.json({ user: mockUser, token: 'mock-token-' + Date.now() });
+      return res.status(401).json({ error: 'No account found with this email. Please sign up first.' });
     }
-    
-    // Generate simple token
-    const token = 'token-' + Date.now();
-    
-    res.json({ user, token });
+
+    // Token carries the user id so /me can resolve the real session owner
+    const token = `uid-${user.id}`;
+
+    res.json({ user: toPublicUser(user), token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed', details: error.message });
@@ -68,26 +72,26 @@ router.post('/signup', async (req, res) => {
       licenseNumber,
       phone
     } = req.body;
-    
+
     // Validation
     if (!email || !firstName || !lastName || !role || !organization || !licenseNumber || !phone) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
         required: ['email', 'firstName', 'lastName', 'role', 'organization', 'licenseNumber', 'phone']
       });
     }
-    
+
     // Check if user already exists
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
       .eq('email', email)
       .single();
-    
+
     if (existingUser) {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
-    
+
     // Create user
     const userData = {
       email,
@@ -101,22 +105,21 @@ router.post('/signup', async (req, res) => {
       phone,
       created_at: new Date().toISOString()
     };
-    
+
     const { data: user, error } = await supabase
       .from('users')
       .insert(userData)
       .select()
       .single();
-    
+
     if (error) {
       console.error('Signup error:', error);
       throw error;
     }
-    
-    // Generate token
-    const token = 'token-' + Date.now();
-    
-    res.status(201).json({ user, token });
+
+    const token = `uid-${user.id}`;
+
+    res.status(201).json({ user: toPublicUser(user), token });
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).json({ error: 'Signup failed', details: error.message });
@@ -125,7 +128,6 @@ router.post('/signup', async (req, res) => {
 
 /**
  * POST /api/auth/logout
- * Logout user
  */
 router.post('/logout', async (req, res) => {
   res.json({ message: 'Logged out successfully' });
@@ -133,26 +135,33 @@ router.post('/logout', async (req, res) => {
 
 /**
  * GET /api/auth/me
- * Get current user from token
+ * Resolves the current user from the uid-bound bearer token
  */
 router.get('/me', async (req, res) => {
   try {
-    // For demo: return mock user
-    const mockUser = {
-      id: 'user-001',
-      email: 'dr.smith@northharbor.com',
-      firstName: 'Sarah',
-      lastName: 'Smith',
-      role: 'primary_doctor',
-      organization: 'North Harbor Family Medicine',
-      organizationId: 'org-001',
-      specialization: null,
-      licenseNumber: 'MD-12345',
-      phone: '+1-555-0100',
-      createdAt: new Date().toISOString()
-    };
-    
-    res.json(mockUser);
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+
+    if (!token.startsWith('uid-')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userId = token.slice(4);
+    if (!UUID_RE.test(userId)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    res.json(toPublicUser(user));
   } catch (error) {
     console.error('Get current user error:', error);
     res.status(401).json({ error: 'Unauthorized' });
