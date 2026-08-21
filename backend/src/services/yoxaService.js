@@ -21,8 +21,9 @@ export async function triggerWorkflow(referralData) {
     console.log('  Trigger URL:', yoxaConfig.triggerUrl);
     
     // SIMPLIFIED PAYLOAD - Match what YOXA workflow entry trigger expects
-    // Start with minimal fields and add more as needed
+    // The workflow's entry trigger has a required field called "trigger_text"
     const payload = {
+      trigger_text: `New referral ${referralData.referralNumber} for ${referralData.patientName} - ${referralData.requestedSpecialty} (${referralData.urgency})`,
       referral_id: referralData.referralNumber,
       patient_id: referralData.patientId,
       patient_name: referralData.patientName,
