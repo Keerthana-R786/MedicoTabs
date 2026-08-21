@@ -136,7 +136,7 @@ async function startServer() {
   validateYoxaConfig();
   
   // Start listening
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log('\n✓ Server running');
     console.log(`  Local: http://localhost:${PORT}`);
     console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -146,12 +146,24 @@ async function startServer() {
     console.log(`  Referrals: http://localhost:${PORT}/api/referrals`);
     console.log(`  Trackers: http://localhost:${PORT}/api/trackers`);
     console.log(`  HITL: http://localhost:${PORT}/api/hitl`);
+    console.log(`  YOXA Tools: http://localhost:${PORT}/api/yoxa/*`);
     console.log('\n🔗 YOXA Integration Points:');
     console.log(`  Trigger: POST http://localhost:${PORT}/api/referrals`);
     console.log(`  Webhook: POST http://localhost:${PORT}/api/hitl/webhook`);
     console.log(`  Respond: POST http://localhost:${PORT}/api/hitl/:requestId/respond`);
     console.log('\n━'.repeat(50));
     console.log('Ready to accept requests!\n');
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n✗ Port ${PORT} is already in use.`);
+      console.error('  A previous instance of this server is still running (that is OK).');
+      console.error('  To stop it and restart fresh, run:');
+      console.error('    Get-Process -Id (Get-NetTCPConnection -LocalPort 5000 -State Listen).OwningProcess | Stop-Process -Force');
+      process.exit(1);
+    }
+    throw err;
   });
 }
 
