@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
-import HeroBackdrop from './components/HeroBackdrop';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -45,8 +44,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <div className="app-shell app-shell--hero flex min-h-screen">
-      <HeroBackdrop variant="app" />
+    <div className="app-shell flex min-h-screen">
       <Sidebar />
       <div className="app-main relative z-[1] flex-1 flex flex-col min-w-0">
         <Header />
