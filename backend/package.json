@@ -10,18 +10,24 @@
     "seed:patients": "node scripts/seedPatients.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["medical", "ehr", "yoxa", "workflow"],
+  "keywords": [
+    "medical",
+    "ehr",
+    "yoxa",
+    "workflow"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.5",
-    "crypto": "^1.0.1",
     "body-parser": "^1.20.2",
-    "morgan": "^1.10.0"
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "morgan": "^1.10.0",
+    "pdfkit": "^0.19.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

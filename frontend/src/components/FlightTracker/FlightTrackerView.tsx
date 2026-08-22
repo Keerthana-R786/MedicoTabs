@@ -3,7 +3,7 @@ import { FlightTracker, TrackerStage } from '@/types';
 import { Check, Clock, AlertCircle, Plane } from 'lucide-react';
 
 interface FlightTrackerViewProps {
-  tracker: FlightTracker;
+  tracker: Pick<FlightTracker, 'visitReason' | 'urgency' | 'stages' | 'signedOffAt' | 'workflowRunId'>;
 }
 
 const stageLabels: Record<TrackerStage, string> = {

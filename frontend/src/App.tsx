@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PatientAuthProvider, usePatientAuth } from './contexts/PatientAuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
@@ -19,6 +20,8 @@ import Approvals from './pages/Approvals';
 import Doctors from './pages/Doctors';
 import Notifications from './pages/Notifications';
 import SettingsPage from './pages/Settings';
+import PatientAccess from './pages/PatientAccess';
+import PatientPortal from './pages/PatientPortal';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -38,7 +41,29 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
+  return <>{children}</>;
+};
+
+const PatientProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = usePatientAuth();
+
+  if (isLoading) {
+    return (
+      <div className="app-shell min-h-screen flex items-center justify-center">
+        <div className="app-shell__texture" aria-hidden />
+        <div className="relative z-[1] text-center">
+          <div className="w-16 h-16 border-4 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-base-500 text-sm font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/patient-access" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -59,13 +84,23 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
+      <PatientAuthProvider>
       <ToastProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
-            
+            <Route path="/patient-access" element={<PatientAccess />} />
+            <Route
+              path="/patient-portal"
+              element={
+                <PatientProtectedRoute>
+                  <PatientPortal />
+                </PatientProtectedRoute>
+              }
+            />
+
             <Route
               path="/dashboard"
               element={
@@ -202,6 +237,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </ToastProvider>
+      </PatientAuthProvider>
     </AuthProvider>
   );
 }

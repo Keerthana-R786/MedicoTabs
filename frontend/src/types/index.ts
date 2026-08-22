@@ -216,3 +216,73 @@ export interface DashboardStats {
   completedToday: number;
   urgentCases: number;
 }
+
+// Patient Portal Types — reduced, patient-facing payload shapes
+// (no patientId/primaryDoctorId — scoping is implicit to the authenticated patient)
+export interface PatientPortalPatient {
+  id: string;
+  referralId: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: 'male' | 'female' | 'other';
+  contactNumber: string;
+  email: string;
+  address: string;
+  bloodGroup?: string;
+  allergies?: string[];
+  insurance: {
+    provider: string;
+    policyNumber: string;
+    memberId: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientPortalReferral {
+  id: string;
+  referralNumber: string;
+  requestedSpecialty: string;
+  specialistName?: string;
+  specialistOrganization?: string;
+  primaryDoctorName: string;
+  primaryOrganization: string;
+  referralReason: string;
+  urgency: UrgencyLevel;
+  status: Referral['status'];
+  coverageStatus?: Referral['coverageStatus'];
+  attendanceStatus?: Referral['attendanceStatus'];
+  appointmentDetails?: Referral['appointmentDetails'];
+  trackerId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientPortalTracker {
+  id: string;
+  visitReason: string;
+  urgency: UrgencyLevel;
+  currentStage: TrackerStage;
+  stages: FlightTrackerStage[];
+  startedAt: string;
+  completedAt?: string;
+  signedOffAt?: string;
+  workflowRunId?: string;
+}
+
+export interface PatientPortalDocument {
+  id: string;
+  fileName: string;
+  fileType: string;
+  category: PatientDocument['category'];
+  uploadedAt: string;
+  size: number;
+}
+
+export interface PatientPortalSummary {
+  patient: PatientPortalPatient;
+  referrals: PatientPortalReferral[];
+  trackers: PatientPortalTracker[];
+  documents: PatientPortalDocument[];
+}

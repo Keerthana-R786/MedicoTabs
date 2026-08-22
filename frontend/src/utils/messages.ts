@@ -41,6 +41,14 @@ const KNOWN: Record<string, { title: string; description: string }> = {
     title: 'Account couldn’t be created',
     description: 'Review the form details and try again. If it keeps failing, contact your admin.',
   },
+  'No patient record matches those details': {
+    title: 'We couldn’t verify those details',
+    description: 'Double-check your Referral ID and date of birth, then try again.',
+  },
+  'Referral ID and date of birth are required': {
+    title: 'Missing details',
+    description: 'Enter both your Referral ID and date of birth to continue.',
+  },
 };
 
 export function formatError(raw?: string | null): { title: string; description: string } {

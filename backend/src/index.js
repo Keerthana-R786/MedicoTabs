@@ -16,6 +16,8 @@ import trackersRouter from './routes/trackers.js';
 import hitlRouter from './routes/hitl.js';
 import yoxaRouter from './routes/yoxa.js';
 import statsRouter from './routes/stats.js';
+import patientAuthRouter from './routes/patientAuth.js';
+import patientPortalRouter from './routes/patientPortal.js';
 
 // Import utilities
 import { captureRawBody } from './utils/hmacVerifier.js';
@@ -80,6 +82,9 @@ app.use('/api/hitl', hitlRouter);
 // YOXA tool endpoints - called back by YOXA agents during workflow runs
 app.use('/api/yoxa', yoxaRouter);
 app.use('/api/stats', statsRouter);
+// Patient portal - separate low-privilege identity space, patients only ever see their own data
+app.use('/api/patient-auth', patientAuthRouter);
+app.use('/api/patient-portal', patientPortalRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -95,6 +100,8 @@ app.get('/', (req, res) => {
       hitl: '/api/hitl',
       yoxa: '/api/yoxa',
       stats: '/api/stats',
+      patientAuth: '/api/patient-auth',
+      patientPortal: '/api/patient-portal',
     },
     yoxaIntegration: {
       triggerWorkflow: 'POST /api/referrals',
