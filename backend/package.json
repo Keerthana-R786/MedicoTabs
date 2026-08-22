@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
+    "seed:patients": "node scripts/seedPatients.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["medical", "ehr", "yoxa", "workflow"],
