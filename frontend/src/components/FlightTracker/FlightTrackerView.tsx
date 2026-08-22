@@ -6,12 +6,12 @@ interface FlightTrackerViewProps {
   tracker: Pick<FlightTracker, 'visitReason' | 'urgency' | 'stages' | 'signedOffAt' | 'workflowRunId'>;
 }
 
-const stageLabels: Record<TrackerStage, string> = {
-  create_and_route: 'Create & Route',
-  acceptance_and_records: 'Acceptance & Records',
-  coverage_verification: 'Coverage Verification',
-  scheduling_and_attendance: 'Scheduling & Attendance',
-  completion_and_archive: 'Completion & Archive',
+export const stageLabels: Record<TrackerStage, string> = {
+  create_and_route: 'Create and Route the Referral',
+  acceptance_and_records: 'Confirm Acceptance and Exchange Documents',
+  coverage_verification: 'Verify Applicable Coverage',
+  scheduling_and_attendance: 'Schedule and Verify Attendance',
+  completion_and_archive: 'Approve Completion, Archive, and Deliver',
 };
 
 /**
@@ -75,6 +75,34 @@ const FlightTrackerView: React.FC<FlightTrackerViewProps> = ({ tracker }) => {
     if (status === 'completed') return 'bg-success-400';
     if (status === 'failed' || status === 'requires_attention') return 'bg-danger-300';
     return 'bg-base-300';
+  };
+
+  /**
+   * Coverage Verification renders one of three explicit states — it must
+   * never default to an outcome while the payer response is still pending.
+   */
+  const renderStageNotes = (stage: FlightTrackerStage) => {
+    if (stage.stage === 'coverage_verification') {
+      if (stage.notes === 'Covered') {
+        return (
+          <div className="mb-1.5">
+            <span className="neu-badge inline-block bg-success-100 text-success-700">Covered</span>
+            {(stage.copay !== undefined || stage.preApprovalNumber) && (
+              <p className="text-[10px] text-base-500 mt-1">
+                {stage.copay !== undefined && `Co-pay: $${stage.copay.toFixed(2)}`}
+                {stage.copay !== undefined && stage.preApprovalNumber ? ' · ' : ''}
+                {stage.preApprovalNumber && `Pre-approval: ${stage.preApprovalNumber}`}
+              </p>
+            )}
+          </div>
+        );
+      }
+      if (stage.notes === 'Cannot Be Claimed') {
+        return <span className="neu-badge inline-block mb-1.5 bg-danger-100 text-danger-700">Cannot Be Claimed</span>;
+      }
+      return <span className="neu-badge inline-block mb-1.5 bg-warning-100 text-warning-700">Verifying</span>;
+    }
+    return stage.notes ? <p className="text-xs text-base-600 mb-1.5">{stage.notes}</p> : null;
   };
 
   const urgencyBadge = ({
@@ -153,13 +181,7 @@ const FlightTrackerView: React.FC<FlightTrackerViewProps> = ({ tracker }) => {
                   </span>
                 </div>
 
-                {stage.notes && stage.stage === 'coverage_verification' ? (
-                  <span className={`neu-badge inline-block mb-1.5 ${
-                    stage.notes === 'Cannot be claimed' ? 'bg-danger-100 text-danger-700' : 'bg-success-100 text-success-700'
-                  }`}>{stage.notes}</span>
-                ) : stage.notes && (
-                  <p className="text-xs text-base-600 mb-1.5">{stage.notes}</p>
-                )}
+                {renderStageNotes(stage)}
 
                 <div className="flex gap-4 text-[10px] text-base-400">
                   {stage.startedAt && <span>Started: {new Date(stage.startedAt).toLocaleString()}</span>}

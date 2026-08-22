@@ -1081,6 +1081,10 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
     const isEligible = Boolean(provider && memberId);
     const coverageStatus = isEligible ? 'verified' : 'denied';
     const copay = isEligible ? 75.0 : 0;
+    // Computed once and reused everywhere below — a fresh Date.now() each
+    // place this was needed used to produce a different number in the stored
+    // row vs. the API response vs. the tracker stage.
+    const preApprovalNumber = requiresPreApproval ? `HC-PA-${Date.now()}` : null;
 
     const { error: insertError } = await supabase.from('coverage_verifications').insert({
       referral_id: asUuid(referral_id),
@@ -1090,7 +1094,7 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
       eligibility_status: isEligible ? 'active' : 'inactive',
       pre_approval_required: requiresPreApproval,
       pre_approval_status: requiresPreApproval ? 'approved' : null,
-      pre_approval_number: requiresPreApproval ? `HC-PA-${Date.now()}` : null,
+      pre_approval_number: preApprovalNumber,
       expected_copay: copay,
       coverage_notes: isEligible
         ? `${provider} active for ${specialty_type || 'specialist'} ${service_type || 'consultation'}`
@@ -1120,7 +1124,7 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
 
       if (tracker) {
         const now = new Date().toISOString();
-        const resultText = isEligible ? 'Covered' : 'Cannot be claimed';
+        const resultText = isEligible ? 'Covered' : 'Cannot Be Claimed';
         const updatedStages = (tracker.stages || []).map((stage) => {
           if (stage.stage !== 'coverage_verification') return stage;
           return {
@@ -1129,6 +1133,8 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
             startedAt: stage.startedAt || now,
             completedAt: now,
             notes: resultText,
+            copay: isEligible ? copay : undefined,
+            preApprovalNumber: isEligible ? preApprovalNumber : undefined,
             agentActions: [
               ...(stage.agentActions || []),
               {
@@ -1157,10 +1163,10 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
       member_id: memberId,
       routine_visit_exempt: false,
       is_eligible: isEligible,
-      coverage_status: isEligible ? 'Covered' : 'Cannot be claimed',
+      coverage_status: isEligible ? 'Covered' : 'Cannot Be Claimed',
       pre_approval_required: requiresPreApproval,
       pre_approval_status: requiresPreApproval ? 'approved' : 'not_required',
-      pre_approval_number: requiresPreApproval ? `HC-PA-${Date.now()}` : null,
+      pre_approval_number: preApprovalNumber,
       expected_copay: copay,
       coverage_details: isEligible
         ? `Coverage confirmed for ${specialty_type || 'specialist'} ${service_type || 'consultation'}`

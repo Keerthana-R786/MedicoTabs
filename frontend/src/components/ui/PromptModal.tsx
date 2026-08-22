@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface PromptModalProps {
   open: boolean;
@@ -39,7 +40,11 @@ const PromptModal: React.FC<PromptModalProps> = ({
     onConfirm(value.trim());
   };
 
-  return (
+  // Rendered via a portal to document.body — inline rendering would make this
+  // a sibling of whatever page content wraps it (e.g. a `space-y-*` utility),
+  // which applies a margin to fixed-position elements too and pushes the
+  // backdrop away from the true viewport edge, leaving a gap uncovered.
+  return createPortal(
     <div className="ui-modal-backdrop" onClick={onCancel}>
       <div className="neu-card w-full max-w-md p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-bold text-base-800">{title}</h3>
@@ -88,7 +93,8 @@ const PromptModal: React.FC<PromptModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

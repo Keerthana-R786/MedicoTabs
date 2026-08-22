@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Upload, Plus, FileText, Plane, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Plus, FileText, Plane, Trash2, ChevronRight } from 'lucide-react';
 import { patientsAPI, documentsAPI, flightTrackerAPI, referralsAPI } from '@/services/api';
 import { Patient, PatientDocument, FlightTracker, Referral } from '@/types';
-import FlightTrackerView from '@/components/FlightTracker/FlightTrackerView';
+import FlightTrackerView, { stageLabels } from '@/components/FlightTracker/FlightTrackerView';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadError from '@/components/ui/LoadError';
@@ -34,6 +34,7 @@ const PatientDetail: React.FC = () => {
   const [signingOffId, setSigningOffId] = useState<string | null>(null);
   const [startingTracking, setStartingTracking] = useState(false);
   const [showVisitReasonModal, setShowVisitReasonModal] = useState(false);
+  const [selectedTrackerId, setSelectedTrackerId] = useState<string | null>(null);
   const [documentsLoadFailed, setDocumentsLoadFailed] = useState(false);
   const [trackersLoadFailed, setTrackersLoadFailed] = useState(false);
   const [referralsLoadFailed, setReferralsLoadFailed] = useState(false);
@@ -103,7 +104,8 @@ const PatientDetail: React.FC = () => {
       const tracker = await flightTrackerAPI.create({
         patientId: patient.id, visitReason: visitReason.trim(), urgency: 'Routine',
       });
-      setTrackers((prev) => [...prev, tracker]);
+      setTrackers((prev) => [tracker, ...prev]);
+      setSelectedTrackerId(null);
       setActiveTab('trackers');
     } catch (err) {
       showError('Couldn’t start tracking', 'Please try again in a moment.');
@@ -155,6 +157,18 @@ const PatientDetail: React.FC = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const referralForTracker = (tracker: FlightTracker) => referrals.find((r) => r.trackerId === tracker.id);
+
+  const trackerProgress = (tracker: FlightTracker) => {
+    const stages = tracker.stages || [];
+    const completed = stages.filter((s) => s.status === 'completed').length;
+    const percent = stages.length ? Math.round((completed / stages.length) * 100) : 0;
+    const idx = Math.max(0, Math.min(completed, stages.length - 1));
+    const isDone = !!tracker.signedOffAt || stages[stages.length - 1]?.status === 'completed';
+    const currentLabel = stages.length ? stageLabels[stages[idx].stage] : '';
+    return { percent, currentLabel, isDone };
   };
 
   const handleDeleteDocument = async (doc: PatientDocument) => {
@@ -265,14 +279,21 @@ const PatientDetail: React.FC = () => {
                   <div className="space-y-2">
                     {referrals.map(ref => (
                       <div key={ref.id} className="neu-flat rounded-xl p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-sm text-base-800">{ref.referralNumber}</p>
-                            <p className="text-xs text-base-500 mt-0.5">{ref.referralReason}</p>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-base-800 truncate">
+                              {ref.referralNumber}{ref.requestedSpecialty ? ` — ${ref.requestedSpecialty}` : ''}
+                            </p>
+                            <p className="text-xs text-base-500 mt-0.5 truncate">{ref.referralReason}</p>
+                            <p className="text-[10px] text-base-400 mt-1">
+                              {new Date(ref.createdAt).toLocaleDateString()}
+                              {ref.specialistName ? ` • ${ref.specialistName}` : ''}
+                            </p>
                           </div>
-                          <span className={`neu-badge ${
-                            ref.status === 'completed' ? 'bg-success-100 text-success-700' :
-                            ref.status === 'accepted' ? 'bg-primary-100 text-primary-700' :
+                          <span className={`neu-badge shrink-0 ${
+                            ref.status === 'completed' || ref.status === 'accepted' ? 'bg-success-100 text-success-700' :
+                            ref.status === 'denied' ? 'bg-danger-100 text-danger-700' :
+                            ref.status === 'archived' ? 'bg-base-300 text-base-600' :
                             'bg-warning-100 text-warning-700'
                           }`}>
                             {ref.status}
@@ -358,26 +379,78 @@ const PatientDetail: React.FC = () => {
           )}
 
           {activeTab === 'trackers' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {trackersLoadFailed && (
                 <LoadError title="Couldn’t load trackers" onRetry={loadTrackers} />
               )}
-              {!trackersLoadFailed && trackers.map((tracker) => (
-                <div key={tracker.id}>
-                  <FlightTrackerView tracker={tracker} />
-                  {!tracker.signedOffAt && (
-                    <div className="flex justify-end mt-3">
-                      <button
-                        onClick={() => handleSignOff(tracker)}
-                        disabled={signingOffId === tracker.id}
-                        className="neu-btn-success flex items-center gap-2 text-sm disabled:opacity-50"
-                      >
-                        {signingOffId === tracker.id ? 'Signing off...' : 'Sign Off — Mark Complete'}
+
+              {!trackersLoadFailed && selectedTrackerId && (() => {
+                const tracker = trackers.find((t) => t.id === selectedTrackerId);
+                if (!tracker) return null;
+                const referral = referralForTracker(tracker);
+                return (
+                  <div className="space-y-3">
+                    <button onClick={() => setSelectedTrackerId(null)}
+                      className="neu-btn flex items-center gap-2 text-xs">
+                      <ArrowLeft className="w-3.5 h-3.5" /> Back to Referrals
+                    </button>
+                    {referral && (
+                      <p className="text-xs text-base-500 px-1">
+                        {referral.referralNumber} · {referral.requestedSpecialty}
+                      </p>
+                    )}
+                    <FlightTrackerView tracker={tracker} />
+                    {!tracker.signedOffAt && (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleSignOff(tracker)}
+                          disabled={signingOffId === tracker.id}
+                          className="neu-btn-success flex items-center gap-2 text-sm disabled:opacity-50"
+                        >
+                          {signingOffId === tracker.id ? 'Signing off...' : 'Sign Off — Mark Complete'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {!trackersLoadFailed && !selectedTrackerId && trackers.length > 0 && (
+                <div className="space-y-2">
+                  {trackers.map((tracker) => {
+                    const referral = referralForTracker(tracker);
+                    const { percent, currentLabel, isDone } = trackerProgress(tracker);
+                    return (
+                      <button key={tracker.id} onClick={() => setSelectedTrackerId(tracker.id)}
+                        className="neu-btn w-full flex items-center justify-between px-5 py-4 text-left">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center shrink-0">
+                            <Plane className="w-5 h-5 text-primary-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-base-800 truncate">
+                              {referral ? `${referral.referralNumber} — ${referral.requestedSpecialty}` : tracker.visitReason}
+                            </p>
+                            <p className="text-xs text-base-500 mt-0.5 truncate">
+                              {isDone ? 'Journey complete' : currentLabel}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={`neu-badge ${
+                            isDone ? 'bg-success-100 text-success-700' :
+                            tracker.urgency === 'Emergency' ? 'bg-danger-500 text-white' :
+                            tracker.urgency === 'Urgent' ? 'bg-warning-500 text-white' :
+                            'bg-primary-500 text-white'
+                          }`}>{isDone ? 'Complete' : `${percent}%`}</span>
+                          <ChevronRight className="w-4 h-4 text-base-400" />
+                        </div>
                       </button>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              ))}
+              )}
+
               {!trackersLoadFailed && trackers.length === 0 && (
                 <div className="neu-pressed rounded-2xl text-center py-12">
                   <Plane className="w-14 h-14 text-base-300 mx-auto mb-3" />

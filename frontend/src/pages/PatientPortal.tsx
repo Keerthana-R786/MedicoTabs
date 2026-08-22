@@ -295,7 +295,7 @@ const PatientPortal: React.FC = () => {
                           ref.coverageStatus === 'denied' ? 'bg-danger-100 text-danger-700' :
                           'bg-warning-100 text-warning-700'
                         }`}>
-                          Coverage: {ref.coverageStatus === 'verified' ? 'Covered' : ref.coverageStatus === 'denied' ? 'Cannot be claimed' : 'Pending'}
+                          Coverage: {ref.coverageStatus === 'verified' ? 'Covered' : ref.coverageStatus === 'denied' ? 'Cannot Be Claimed' : 'Verifying'}
                         </span>
                       )}
                     </div>

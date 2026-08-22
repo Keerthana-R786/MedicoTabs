@@ -350,10 +350,36 @@ router.get('/:id/referrals', async (req, res) => {
       .select('*')
       .eq('patient_id', req.params.id)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
-    
-    res.json(data);
+
+    res.json((data || []).map((r) => ({
+      id: r.id,
+      referralNumber: r.referral_number,
+      patientId: r.patient_id,
+      patientName: r.patient_name,
+      primaryDoctorId: r.primary_doctor_id,
+      primaryDoctorName: r.primary_doctor_name,
+      primaryOrganization: r.primary_organization,
+      specialistId: r.specialist_id,
+      specialistName: r.specialist_name,
+      specialistOrganization: r.specialist_organization,
+      requestedSpecialty: r.requested_specialty,
+      specialistPreference: r.specialist_preference,
+      referralReason: r.referral_reason,
+      serviceType: r.service_type,
+      urgency: r.urgency,
+      status: r.status,
+      targetedDocuments: r.targeted_documents,
+      coverageStatus: r.coverage_status,
+      attendanceStatus: r.attendance_status,
+      appointmentDetails: r.appointment_details,
+      workflowRunId: r.workflow_run_id,
+      trackerId: r.tracker_id,
+      acknowledgmentDeadline: r.acknowledgment_deadline,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    })));
   } catch (error) {
     console.error('Error fetching patient referrals:', error);
     res.status(500).json({ error: 'Failed to fetch referrals' });

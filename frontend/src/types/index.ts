@@ -76,6 +76,9 @@ export interface FlightTrackerStage {
   completedAt?: string;
   notes?: string;
   agentActions?: AgentAction[];
+  // Coverage Verification specifics — set only when notes === 'Covered'.
+  copay?: number;
+  preApprovalNumber?: string;
 }
 
 export interface AgentAction {

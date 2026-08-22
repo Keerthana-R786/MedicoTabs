@@ -110,11 +110,11 @@ router.get('/summary', async (req, res) => {
 });
 
 const STAGE_LABELS = {
-  create_and_route: 'Create & Route',
-  acceptance_and_records: 'Acceptance & Records',
-  coverage_verification: 'Coverage Verification',
-  scheduling_and_attendance: 'Scheduling & Attendance',
-  completion_and_archive: 'Completion & Archive',
+  create_and_route: 'Create and Route the Referral',
+  acceptance_and_records: 'Confirm Acceptance and Exchange Documents',
+  coverage_verification: 'Verify Applicable Coverage',
+  scheduling_and_attendance: 'Schedule and Verify Attendance',
+  completion_and_archive: 'Approve Completion, Archive, and Deliver',
 };
 
 /**
