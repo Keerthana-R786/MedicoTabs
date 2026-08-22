@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Send, MessageSquare } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Send, MessageSquare, X } from 'lucide-react';
 import { messagesAPI } from '@/services/api';
 import { Message } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,17 +8,35 @@ import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
 import LoadError from '@/components/ui/LoadError';
 
+export interface ComposeTarget {
+  recipientId?: string;
+  recipientName: string;
+  referralId?: string;
+  subject: string;
+}
+
 const Messages: React.FC = () => {
   const { user } = useAuth();
   const { success, error: showError } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [composeTarget, setComposeTarget] = useState<ComposeTarget | null>(
+    (location.state as { composeTo?: ComposeTarget } | null)?.composeTo || null
+  );
+  const [composeText, setComposeText] = useState('');
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
-  useEffect(() => { loadMessages(); }, []);
+  useEffect(() => {
+    loadMessages();
+    // Clear the navigation state so a refresh/back doesn't reopen compose
+    if (location.state) navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadMessages = async () => {
     setLoadFailed(false);
@@ -35,6 +54,7 @@ const Messages: React.FC = () => {
   };
 
   const handleSelectMessage = async (message: Message) => {
+    setComposeTarget(null);
     setSelectedMessage(message);
     if (!message.isRead) {
       try {
@@ -54,7 +74,7 @@ const Messages: React.FC = () => {
         referralId: selectedMessage.referralId,
         senderId: user.id,
         senderName: `Dr. ${user.firstName} ${user.lastName}`,
-        senderRole: user.role === 'primary_doctor' ? 'Primary Doctor' : 'Specialist',
+        senderRole: user.role === 'primary_doctor' ? 'Primary Doctor' : user.role === 'coordinator' ? 'Care Coordinator' : 'Specialist',
         recipientId: selectedMessage.senderId,
         recipientName: selectedMessage.senderName,
         subject: `Re: ${selectedMessage.subject}`,
@@ -63,6 +83,29 @@ const Messages: React.FC = () => {
       const msg = formatSuccess('reply-sent');
       success(msg.title, msg.description);
       setReplyText('');
+      await loadMessages();
+    } catch (err: any) {
+      const msg = formatError(err.message);
+      showError(msg.title, msg.description);
+    }
+    finally { setSending(false); }
+  };
+
+  const handleSendCompose = async () => {
+    if (!composeTarget || !composeText.trim() || !user) return;
+    setSending(true);
+    try {
+      await messagesAPI.send({
+        referralId: composeTarget.referralId,
+        recipientId: composeTarget.recipientId,
+        recipientName: composeTarget.recipientName,
+        subject: composeTarget.subject,
+        content: composeText, attachments: [],
+      });
+      const msg = formatSuccess('reply-sent');
+      success(msg.title, msg.description);
+      setComposeText('');
+      setComposeTarget(null);
       await loadMessages();
     } catch (err: any) {
       const msg = formatError(err.message);
@@ -125,9 +168,34 @@ const Messages: React.FC = () => {
           </div>
         </div>
 
-        {/* Detail / Reply */}
+        {/* Detail / Reply / Compose */}
         <div className="neu-card p-6">
-          {selectedMessage ? (
+          {composeTarget ? (
+            <div className="space-y-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-lg font-bold text-base-900">New Message</h2>
+                  <p className="text-xs text-base-500 mt-1">
+                    To: {composeTarget.recipientName} — {composeTarget.subject}
+                  </p>
+                </div>
+                <button onClick={() => setComposeTarget(null)} aria-label="Cancel"
+                  className="neu-btn w-8 h-8 flex items-center justify-center rounded-full p-0 shrink-0">
+                  <X className="w-3.5 h-3.5 text-base-500" />
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-base-500 mb-1.5 uppercase tracking-wider">Message</label>
+                <textarea value={composeText} onChange={(e) => setComposeText(e.target.value)}
+                  className="neu-input w-full resize-none" rows={7} placeholder="Type your message..." />
+                <button onClick={handleSendCompose} disabled={!composeText.trim() || sending}
+                  className="neu-btn-primary mt-3 w-full flex items-center justify-center gap-2">
+                  <Send className="w-4 h-4" /> {sending ? 'Sending...' : 'Send Message'}
+                </button>
+              </div>
+            </div>
+          ) : selectedMessage ? (
             <div className="space-y-5">
               <div>
                 <h2 className="font-display text-lg font-bold text-base-900">{selectedMessage.subject}</h2>

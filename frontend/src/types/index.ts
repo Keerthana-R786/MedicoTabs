@@ -117,6 +117,9 @@ export interface Referral {
   specialistPreference?: string;
   referralReason: string;
   serviceType?: string;
+  // Determines whether the Coverage Verification stage/agent runs at all —
+  // general checkups skip it entirely; only advanced treatments/operations need it.
+  visitType?: 'general_checkup' | 'advanced_treatment';
   urgency: UrgencyLevel;
   // Contact & coverage details collected at referral creation
   patientContactNumber?: string;

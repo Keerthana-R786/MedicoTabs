@@ -62,9 +62,6 @@ const Landing: React.FC = () => {
                 <span className="hero-type-nav text-[1.05rem]">MedicoTabs</span>
               </Link>
               <nav className="flex items-center gap-2 sm:gap-3" aria-label="Account">
-                <Link to="/patient-access" className="landing-btn landing-btn--ghost-nav">
-                  Patient Access
-                </Link>
                 {isAuthenticated ? (
                   <Link to="/dashboard" className="landing-btn landing-btn--solid landing-btn--sm">
                     Open Dashboard

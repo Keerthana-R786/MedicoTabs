@@ -1,8 +1,20 @@
 import express from 'express';
 import { supabase } from '../config/database.js';
+import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 
 const router = express.Router();
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+router.use(requireDoctorAuth);
+
+/** Mirrors the stage set referrals.js seeds, for trackers created directly
+ * (not via a referral) — e.g. "Start Tracking a Visit" on a patient chart. */
+function defaultStages() {
+  return [
+    { stage: 'create_and_route', status: 'in_progress', startedAt: new Date().toISOString(), agentActions: [] },
+    { stage: 'acceptance_and_records', status: 'pending', agentActions: [] },
+    { stage: 'scheduling_and_attendance', status: 'pending', agentActions: [] },
+    { stage: 'completion_and_archive', status: 'pending', agentActions: [] },
+  ];
+}
 
 /**
  * GET /api/trackers/:id
@@ -53,7 +65,7 @@ router.post('/', async (req, res) => {
       visit_reason: req.body.visitReason,
       urgency: req.body.urgency,
       current_stage: req.body.currentStage || 'create_and_route',
-      stages: req.body.stages || [],
+      stages: (req.body.stages && req.body.stages.length > 0) ? req.body.stages : defaultStages(),
       workflow_run_id: req.body.workflowRunId,
       started_at: new Date().toISOString(),
     };
@@ -91,16 +103,36 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
+    const b = req.body;
+    const updateData = {};
+    if (b.currentStage !== undefined) updateData.current_stage = b.currentStage;
+    if (b.stages !== undefined) updateData.stages = b.stages;
+    if (b.visitReason !== undefined) updateData.visit_reason = b.visitReason;
+    if (b.urgency !== undefined) updateData.urgency = b.urgency;
+    if (b.completedAt !== undefined) updateData.completed_at = b.completedAt;
+
     const { data, error } = await supabase
       .from('flight_trackers')
-      .update(req.body)
+      .update(updateData)
       .eq('id', req.params.id)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
-    res.json(data);
+
+    res.json({
+      id: data.id,
+      patientId: data.patient_id,
+      visitReason: data.visit_reason,
+      urgency: data.urgency,
+      currentStage: data.current_stage,
+      stages: data.stages,
+      startedAt: data.started_at,
+      completedAt: data.completed_at,
+      signedOffBy: data.signed_off_by,
+      signedOffAt: data.signed_off_at,
+      workflowRunId: data.workflow_run_id,
+    });
   } catch (error) {
     console.error('Error updating tracker:', error);
     res.status(500).json({ error: 'Failed to update tracker' });
@@ -113,12 +145,10 @@ router.put('/:id', async (req, res) => {
  */
 router.post('/:id/signoff', async (req, res) => {
   try {
-    const { notes, userId } = req.body;
-
     const { data, error } = await supabase
       .from('flight_trackers')
       .update({
-        signed_off_by: UUID_RE.test(userId || '') ? userId : null,
+        signed_off_by: req.userId,
         signed_off_at: new Date().toISOString(),
         completed_at: new Date().toISOString(),
       })

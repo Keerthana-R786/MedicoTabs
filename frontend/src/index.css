@@ -720,6 +720,9 @@ button {
   pointer-events: none;
 }
 
+/* The viewport sits top-right, over the dark app header — a light+white
+   neu-card highlight there reads as a stray glow, so toasts get a plain
+   dark drop shadow instead (matches .app-header__notif-panel). */
 .ui-toast {
   pointer-events: auto;
   display: flex;
@@ -729,21 +732,21 @@ button {
   border-radius: 1rem;
   background: #f4f3ef;
   border: none;
-  box-shadow: 7px 7px 14px #d0cec6, -7px -7px 14px #ffffff;
+  box-shadow: 0 16px 32px rgba(6, 32, 30, 0.35);
   animation: ui-toast-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .ui-toast--error {
-  box-shadow: 7px 7px 14px #d0cec6, -7px -7px 14px #ffffff, inset 3px 0 0 #d14b4b;
+  box-shadow: 0 16px 32px rgba(6, 32, 30, 0.35), inset 3px 0 0 #d14b4b;
 }
 .ui-toast--success {
-  box-shadow: 7px 7px 14px #d0cec6, -7px -7px 14px #ffffff, inset 3px 0 0 #1f7f79;
+  box-shadow: 0 16px 32px rgba(6, 32, 30, 0.35), inset 3px 0 0 #1f7f79;
 }
 .ui-toast--warning {
-  box-shadow: 7px 7px 14px #d0cec6, -7px -7px 14px #ffffff, inset 3px 0 0 #d4860c;
+  box-shadow: 0 16px 32px rgba(6, 32, 30, 0.35), inset 3px 0 0 #d4860c;
 }
 .ui-toast--info {
-  box-shadow: 7px 7px 14px #d0cec6, -7px -7px 14px #ffffff, inset 3px 0 0 #145551;
+  box-shadow: 0 16px 32px rgba(6, 32, 30, 0.35), inset 3px 0 0 #145551;
 }
 
 .ui-toast__icon {
@@ -833,12 +836,35 @@ button {
   animation: ui-toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Generic popup backdrop (confirmation/prompt dialogs). Any .neu-card placed
+   over this dark overlay must lose its white neu highlight — it reads as a
+   stray glow against the dark backdrop instead of blending in. */
+.ui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  animation: splash-fade-in 0.2s ease-out both;
+}
+
+.ui-modal-backdrop .neu-card {
+  box-shadow: 0 20px 45px rgba(6, 32, 30, 0.35), 0 2px 10px rgba(6, 32, 30, 0.2) !important;
+  animation: ui-toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ui-toast {
     animation: none;
   }
   .demo-modal,
-  .demo-modal-backdrop {
+  .demo-modal-backdrop,
+  .ui-modal-backdrop,
+  .ui-modal-backdrop .neu-card {
     animation: none;
   }
 }

@@ -60,6 +60,21 @@ const PatientPortal: React.FC = () => {
     navigate('/patient-access');
   };
 
+  const handleDownloadDocument = async (docId: string, fileName: string) => {
+    try {
+      const blob = await patientPortalAPI.downloadDocument(docId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      showError('Download failed', 'Could not download this document. Please try again.');
+    }
+  };
+
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
@@ -257,6 +272,34 @@ const PatientPortal: React.FC = () => {
                     </div>
                     <span className={`neu-badge ${statusBadge(ref.status)} shrink-0`}>{ref.status}</span>
                   </div>
+
+                  {(ref.appointmentDetails || ref.attendanceStatus || ref.coverageStatus) && (
+                    <div className="mt-3 pt-3 border-t border-base-300/50 flex flex-wrap gap-2">
+                      {ref.appointmentDetails && (
+                        <span className="neu-badge bg-primary-100 text-primary-700">
+                          Appointment: {ref.appointmentDetails.date} {ref.appointmentDetails.time} • {ref.appointmentDetails.location}
+                        </span>
+                      )}
+                      {ref.attendanceStatus && (
+                        <span className={`neu-badge ${
+                          ref.attendanceStatus === 'attended' ? 'bg-success-100 text-success-700' :
+                          ref.attendanceStatus === 'missed' ? 'bg-danger-100 text-danger-700' :
+                          'bg-base-300 text-base-600'
+                        }`}>
+                          {ref.attendanceStatus.replace('_', ' ')}
+                        </span>
+                      )}
+                      {ref.coverageStatus && ref.coverageStatus !== 'not_applicable' && (
+                        <span className={`neu-badge ${
+                          ref.coverageStatus === 'verified' ? 'bg-success-100 text-success-700' :
+                          ref.coverageStatus === 'denied' ? 'bg-danger-100 text-danger-700' :
+                          'bg-warning-100 text-warning-700'
+                        }`}>
+                          Coverage: {ref.coverageStatus === 'verified' ? 'Covered' : ref.coverageStatus === 'denied' ? 'Cannot be claimed' : 'Pending'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -290,18 +333,25 @@ const PatientPortal: React.FC = () => {
             <div className="space-y-2">
               {documents.map((doc) => (
                 <div key={doc.id} className="neu-flat flex items-center justify-between px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center shrink-0">
                       <FileText className="w-5 h-5 text-primary-600" />
                     </div>
-                    <div>
-                      <p className="font-semibold text-sm text-base-800">{doc.fileName}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-base-800 truncate">{doc.fileName}</p>
                       <p className="text-xs text-base-500">
                         {doc.category.replace('_', ' ')} • {(doc.size / 1024).toFixed(0)} KB •{' '}
                         {new Date(doc.uploadedAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleDownloadDocument(doc.id, doc.fileName)}
+                    className="neu-btn w-9 h-9 flex items-center justify-center rounded-full p-0 shrink-0"
+                    aria-label={`Download ${doc.fileName}`}
+                  >
+                    <Download className="w-4 h-4 text-base-500" />
+                  </button>
                 </div>
               ))}
             </div>

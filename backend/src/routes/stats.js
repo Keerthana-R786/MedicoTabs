@@ -1,7 +1,9 @@
 import express from 'express';
 import { supabase } from '../config/database.js';
+import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 
 const router = express.Router();
+router.use(requireDoctorAuth);
 
 const OPEN_REFERRAL_STATUSES = ['pending', 'routed', 'accepted', 'rerouted'];
 
@@ -19,19 +21,23 @@ async function countRows(table, applyFilters) {
  */
 router.get('/dashboard', async (req, res) => {
   try {
+    const { userId, user } = req;
+    const isSpecialist = user.role === 'specialist_doctor';
+    const referralOwner = (q) => (isSpecialist ? q.eq('specialist_id', userId) : q.eq('primary_doctor_id', userId));
+
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
     const [totalPatients, activeReferrals, pendingApprovals, completedToday, urgentCases] =
       await Promise.all([
-        countRows('patients'),
-        countRows('referrals', (q) => q.in('status', OPEN_REFERRAL_STATUSES)),
-        countRows('hitl_approval_requests', (q) => q.eq('status', 'pending')),
+        isSpecialist ? countRows('patients') : countRows('patients', (q) => q.eq('primary_doctor_id', userId)),
+        countRows('referrals', (q) => referralOwner(q).in('status', OPEN_REFERRAL_STATUSES)),
+        countRows('hitl_approval_requests', (q) => q.eq('status', 'pending').eq('assigned_to', userId)),
         countRows('referrals', (q) =>
-          q.eq('status', 'completed').gte('updated_at', todayStart.toISOString())
+          referralOwner(q).eq('status', 'completed').gte('updated_at', todayStart.toISOString())
         ),
         countRows('referrals', (q) =>
-          q.in('urgency', ['Urgent', 'Emergency']).in('status', OPEN_REFERRAL_STATUSES)
+          referralOwner(q).in('urgency', ['Urgent', 'Emergency']).in('status', OPEN_REFERRAL_STATUSES)
         ),
       ]);
 

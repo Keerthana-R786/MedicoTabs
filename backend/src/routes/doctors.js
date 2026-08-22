@@ -1,7 +1,9 @@
 import express from 'express';
 import { supabase } from '../config/database.js';
+import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 
 const router = express.Router();
+router.use(requireDoctorAuth);
 
 function toPublicDoctor(row) {
   return {

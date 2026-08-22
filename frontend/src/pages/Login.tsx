@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Stethoscope, Eye, EyeOff, X, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, X, ChevronRight } from 'lucide-react';
 import InlineAlert from '@/components/ui/InlineAlert';
 import HeroBackdrop from '@/components/HeroBackdrop';
 import { formatError } from '@/utils/messages';
@@ -67,9 +67,6 @@ const Login: React.FC = () => {
       <div className="neu-card w-full max-w-md p-10">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 bg-primary-800">
-            <Stethoscope className="w-11 h-11 text-white" />
-          </div>
           <h1 className="text-3xl font-bold text-base-800 tracking-tight">MedicoTabs</h1>
           <p className="text-base-500 mt-1.5 text-sm font-medium">The Referral That Never Goes Dark</p>
         </div>

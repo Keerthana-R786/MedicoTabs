@@ -3,6 +3,7 @@ import { supabase } from '../config/database.js';
 import { respondToApproval } from '../services/yoxaService.js';
 import { verifyWebhookSignature, isTimestampFresh } from '../utils/hmacVerifier.js';
 import { yoxaConfig } from '../config/yoxa.js';
+import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 
 const router = express.Router();
 
@@ -205,25 +206,16 @@ router.post('/webhook', async (req, res) => {
 
 /**
  * GET /api/hitl/pending
- * Get pending approval requests for current user
+ * Get pending approval requests assigned to the authenticated user
  */
-router.get('/pending', async (req, res) => {
+router.get('/pending', requireDoctorAuth, async (req, res) => {
   try {
-    // In production, get user ID from auth token
-    // For now, accept from query param
-    const userId = req.query.userId || req.user?.id;
-    
-    const query = supabase
+    const { data, error } = await supabase
       .from('hitl_approval_requests')
       .select('*')
       .eq('status', 'pending')
+      .eq('assigned_to', req.userId)
       .order('received_at', { ascending: false });
-    
-    if (userId) {
-      query.eq('assigned_to', userId);
-    }
-    
-    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -238,7 +230,7 @@ router.get('/pending', async (req, res) => {
  * GET /api/hitl/:id
  * Get specific approval request
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireDoctorAuth, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('hitl_approval_requests')
@@ -248,6 +240,9 @@ router.get('/:id', async (req, res) => {
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Approval not found' });
+    if (data.assigned_to && data.assigned_to !== req.userId) {
+      return res.status(403).json({ error: 'This approval is not assigned to you' });
+    }
 
     res.json(transformApproval(data));
   } catch (error) {
@@ -261,7 +256,7 @@ router.get('/:id', async (req, res) => {
  * Respond to HITL approval request
  * CRITICAL: This sends the response back to YOXA
  */
-router.post('/:requestId/respond', async (req, res) => {
+router.post('/:requestId/respond', requireDoctorAuth, async (req, res) => {
   try {
     const { requestId } = req.params;
     const { selectedOptionId, overrideMessage } = req.body;
@@ -286,7 +281,11 @@ router.post('/:requestId/respond', async (req, res) => {
     if (findError || !approval) {
       return res.status(404).json({ error: 'Approval request not found' });
     }
-    
+
+    if (approval.assigned_to && approval.assigned_to !== req.userId) {
+      return res.status(403).json({ error: 'This approval is not assigned to you' });
+    }
+
     // Check if already answered
     if (approval.status === 'answered') {
       console.log('⚠ Approval already answered (idempotent behavior)');
@@ -296,10 +295,11 @@ router.post('/:requestId/respond', async (req, res) => {
         message: 'This approval has already been answered',
       });
     }
-    
-    // Get current user (in production, from auth token)
-    const userId = req.user?.id || req.body.userId || approval.assigned_to;
-    
+
+    // The authenticated caller is always the responder — never trust a
+    // client-supplied userId here.
+    const userId = req.userId;
+
     try {
       // Send response to YOXA
       console.log('🚀 Sending response to YOXA...');

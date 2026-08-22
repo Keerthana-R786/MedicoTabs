@@ -153,7 +153,11 @@ const FlightTrackerView: React.FC<FlightTrackerViewProps> = ({ tracker }) => {
                   </span>
                 </div>
 
-                {stage.notes && (
+                {stage.notes && stage.stage === 'coverage_verification' ? (
+                  <span className={`neu-badge inline-block mb-1.5 ${
+                    stage.notes === 'Cannot be claimed' ? 'bg-danger-100 text-danger-700' : 'bg-success-100 text-success-700'
+                  }`}>{stage.notes}</span>
+                ) : stage.notes && (
                   <p className="text-xs text-base-600 mb-1.5">{stage.notes}</p>
                 )}
 

@@ -1,10 +1,9 @@
 import express from 'express';
 import { supabase } from '../config/database.js';
 import { requireDoctorAuth } from '../middleware/doctorAuth.js';
+import { signDoctorToken, verifyDoctorToken } from '../utils/tokens.js';
 
 const router = express.Router();
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DEFAULT_NOTIFICATION_PREFS = {
   emailAlerts: true,
@@ -53,8 +52,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'No account found with this email. Please sign up first.' });
     }
 
-    // Token carries the user id so /me can resolve the real session owner
-    const token = `uid-${user.id}`;
+    const token = signDoctorToken(user.id);
 
     res.json({ user: toPublicUser(user), token });
   } catch (error) {
@@ -126,7 +124,7 @@ router.post('/signup', async (req, res) => {
       throw error;
     }
 
-    const token = `uid-${user.id}`;
+    const token = signDoctorToken(user.id);
 
     res.status(201).json({ user: toPublicUser(user), token });
   } catch (error) {
@@ -151,12 +149,8 @@ router.get('/me', async (req, res) => {
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : '';
 
-    if (!token.startsWith('uid-')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const userId = token.slice(4);
-    if (!UUID_RE.test(userId)) {
+    const userId = verifyDoctorToken(token);
+    if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 

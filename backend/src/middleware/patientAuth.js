@@ -1,6 +1,5 @@
 import { supabase } from '../config/database.js';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { verifyPatientToken } from '../utils/tokens.js';
 
 /**
  * Enforces patient-portal auth. The patient identity is derived ONLY from
@@ -12,12 +11,8 @@ export async function requirePatientAuth(req, res, next) {
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : '';
 
-    if (!token.startsWith('pid-')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const patientId = token.slice(4);
-    if (!UUID_RE.test(patientId)) {
+    const patientId = verifyPatientToken(token);
+    if (!patientId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 

@@ -1,8 +1,10 @@
 import express from 'express';
 import PDFDocument from 'pdfkit';
 import { supabase } from '../config/database.js';
+import { requireYoxaAuth } from '../middleware/yoxaAuth.js';
 
 const router = express.Router();
+router.use(requireYoxaAuth);
 const DOCUMENTS_BUCKET = 'patient-documents';
 
 /** Renders plain-text lines into a simple PDF buffer. */
@@ -628,7 +630,7 @@ router.post('/coordinator-escalation-alert', async (req, res) => {
       type: 'alert',
       title: `URGENT: ${urgency_level || 'Referral'} Escalation`,
       message: `Referral ${referral_id} for ${patient_name || 'patient'} requires immediate attention. Reason: ${escalation_reason}. Specialty: ${specialty_required || 'N/A'}. SLA Deadline: ${sla_deadline || 'N/A'}`,
-      referralId,
+      referralId: referral_id,
     });
 
     res.json({
@@ -668,7 +670,7 @@ router.post('/notify-patient', async (req, res) => {
       type: 'referral',
       title: `Referral Update: ${String(notification_type || 'status').replace(/_/g, ' ')}`,
       message: `${message_content}${appointment_details ? ` Appointment: ${JSON.stringify(appointment_details)}` : ''}`,
-      referralId,
+      referralId: referral_id,
     });
 
     res.json({
@@ -700,7 +702,7 @@ router.post('/patient-reengagement-nudge', async (req, res) => {
       type: 'alert',
       title: `Action Required: ${String(nudge_type || 'visit').replace(/_/g, ' ')}`,
       message: message_content || 'Please complete your referral process',
-      referralId,
+      referralId: referral_id,
     });
 
     res.json({
@@ -847,7 +849,7 @@ router.post('/specialist-alert', async (req, res) => {
       type: 'referral',
       title: `New ${urgency_level || 'Routine'} Referral: ${patient_name || 'Patient'}`,
       message: `${specialty_type || 'Specialist'} consultation requested. Reason: ${referral_reason || 'N/A'}. Acknowledge by ${acknowledgment_deadline || 'SLA deadline'}.`,
-      referralId,
+      referralId: referral_id,
     });
 
     res.json({
@@ -1053,7 +1055,9 @@ router.post('/specialist-routing-availability', async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // 21. Coverage and Pre-approval Verification
-// Applies the routine-visit exemption or verifies eligibility + pre-approval.
+// Only invoked for advanced treatments/operations — verifies whether the
+// patient's insurance can be claimed and writes Covered/Cannot be claimed
+// onto the tracker's coverage_verification stage.
 // ---------------------------------------------------------------------------
 router.post('/coverage-preapproval-verification', async (req, res) => {
   try {
@@ -1069,15 +1073,13 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
     const provider = patient.insurance?.provider || '';
     const memberId = patient.insurance?.memberId || '';
 
-    // Advanced services (surgeries, scans, advanced treatments) need pre-approval;
-    // plain consultations qualify for the routine-visit exemption.
-    const advancedServiceKeywords = ['surgery', 'surgical', 'scan', 'mri', 'ct', 'endoscopic', 'dilation', 'procedure', 'biopsy'];
-    const requiresPreApproval = advancedServiceKeywords.some((k) =>
-      String(service_type || '').toLowerCase().includes(k)
-    );
+    // This tool only runs for advanced treatments/operations (the tracker's
+    // coverage_verification stage doesn't even exist for general checkups),
+    // so every call here needs pre-approval by definition.
+    const requiresPreApproval = true;
 
     const isEligible = Boolean(provider && memberId);
-    const coverageStatus = !isEligible ? 'denied' : requiresPreApproval ? 'verified' : 'verified';
+    const coverageStatus = isEligible ? 'verified' : 'denied';
     const copay = isEligible ? 75.0 : 0;
 
     const { error: insertError } = await supabase.from('coverage_verifications').insert({
@@ -1106,6 +1108,48 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
         .eq('id', referral.id);
     }
 
+    // Write the outcome straight onto the tracker's coverage_verification stage
+    // so the UI shows "Covered" / "Cannot be claimed" without depending on how
+    // the external workflow chooses to phrase its own stage update.
+    if (referral?.tracker_id) {
+      const { data: tracker } = await supabase
+        .from('flight_trackers')
+        .select('*')
+        .eq('id', referral.tracker_id)
+        .single();
+
+      if (tracker) {
+        const now = new Date().toISOString();
+        const resultText = isEligible ? 'Covered' : 'Cannot be claimed';
+        const updatedStages = (tracker.stages || []).map((stage) => {
+          if (stage.stage !== 'coverage_verification') return stage;
+          return {
+            ...stage,
+            status: isEligible ? 'completed' : 'requires_attention',
+            startedAt: stage.startedAt || now,
+            completedAt: now,
+            notes: resultText,
+            agentActions: [
+              ...(stage.agentActions || []),
+              {
+                id: `action-${Date.now()}`,
+                toolName: 'coverage_preapproval_verification',
+                timestamp: now,
+                status: isEligible ? 'success' : 'failed',
+                description: `Insurance coverage check for ${specialty_type || 'specialist'} ${service_type || 'treatment'}`,
+                result: resultText,
+              },
+            ],
+          };
+        });
+
+        await supabase
+          .from('flight_trackers')
+          .update({ stages: updatedStages })
+          .eq('id', tracker.id);
+      }
+    }
+
     res.json({
       referral_id,
       patient_id,
@@ -1113,7 +1157,7 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
       member_id: memberId,
       routine_visit_exempt: false,
       is_eligible: isEligible,
-      coverage_status: isEligible ? 'Active' : 'Denied',
+      coverage_status: isEligible ? 'Covered' : 'Cannot be claimed',
       pre_approval_required: requiresPreApproval,
       pre_approval_status: requiresPreApproval ? 'approved' : 'not_required',
       pre_approval_number: requiresPreApproval ? `HC-PA-${Date.now()}` : null,

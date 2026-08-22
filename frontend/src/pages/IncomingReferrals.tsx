@@ -11,6 +11,7 @@ import { Referral } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
 import LoadError from '@/components/ui/LoadError';
+import PromptModal from '@/components/ui/PromptModal';
 
 const IncomingReferrals: React.FC = () => {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ const IncomingReferrals: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [denyTargetId, setDenyTargetId] = useState<string | null>(null);
 
   useEffect(() => { if (user) loadReferrals(); }, [user]);
 
@@ -31,9 +33,12 @@ const IncomingReferrals: React.FC = () => {
     if (!user) return;
     setLoadFailed(false);
     try {
-      setPendingReferrals(await referralsAPI.getAll()); // Backend should filter by user
-      setAcceptedReferrals(await referralsAPI.getAll()); // Backend should filter by status
-      setCompletedReferrals(await referralsAPI.getAll()); // Backend should filter by status
+      // Backend now scopes the list to this specialist (assigned + unclaimed
+      // matching their specialty) — split the one response by status.
+      const all = await referralsAPI.getAll();
+      setPendingReferrals(all.filter((r) => r.status === 'routed' || r.status === 'pending'));
+      setAcceptedReferrals(all.filter((r) => r.status === 'accepted'));
+      setCompletedReferrals(all.filter((r) => r.status === 'completed' || r.status === 'archived'));
     } catch {
       setLoadFailed(true);
     }
@@ -59,9 +64,12 @@ const IncomingReferrals: React.FC = () => {
     finally { setActionLoading(null); }
   };
 
-  const handleDeny = async (id: string) => {
-    const reason = prompt('Reason for declining:');
-    if (reason === null) return;
+  const handleDeny = (id: string) => setDenyTargetId(id);
+
+  const handleConfirmDeny = async (reason: string) => {
+    const id = denyTargetId;
+    setDenyTargetId(null);
+    if (!id) return;
     setActionLoading(id);
     try {
       await referralsAPI.denyReferral(id, reason);
@@ -253,13 +261,33 @@ const IncomingReferrals: React.FC = () => {
                           <p className="text-xs text-base-700">{ref.referralReason}</p>
                         </div>
 
+                        {ref.targetedDocuments && ref.targetedDocuments.length > 0 && (
+                          <div className="mt-3 neu-pressed rounded-xl p-4">
+                            <p className="text-[10px] text-base-400 uppercase tracking-wider mb-1">
+                              Shared Documents ({ref.targetedDocuments.length})
+                            </p>
+                            <p className="text-xs text-base-700">
+                              Shared via the secure document portal — open Patient Record to view them.
+                            </p>
+                          </div>
+                        )}
+
                         {ref.status === 'accepted' && (
                           <div className="mt-4 flex gap-3">
                             <button onClick={() => navigate(`/patients/${ref.patientId}`)}
                               className="neu-btn flex items-center gap-2 text-xs">
                               <User className="w-3.5 h-3.5" /> Patient Record
                             </button>
-                            <button onClick={() => navigate('/messages')}
+                            <button onClick={() => navigate('/messages', {
+                              state: {
+                                composeTo: {
+                                  recipientId: ref.primaryDoctorId,
+                                  recipientName: ref.primaryDoctorName,
+                                  referralId: ref.id,
+                                  subject: `Re: ${ref.referralNumber}`,
+                                },
+                              },
+                            })}
                               className="neu-btn flex items-center gap-2 text-xs">
                               <MessageSquare className="w-3.5 h-3.5" /> Message
                             </button>
@@ -278,6 +306,17 @@ const IncomingReferrals: React.FC = () => {
           )}
         </div>
       </div>
+
+      <PromptModal
+        open={denyTargetId !== null}
+        title="Decline Referral"
+        label="Reason for Declining"
+        placeholder="e.g. Outside scope of practice"
+        multiline
+        confirmLabel="Decline"
+        onConfirm={handleConfirmDeny}
+        onCancel={() => setDenyTargetId(null)}
+      />
     </div>
   );
 };

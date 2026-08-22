@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Stethoscope, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import InlineAlert from '@/components/ui/InlineAlert';
 import HeroBackdrop from '@/components/HeroBackdrop';
 import { formatError } from '@/utils/messages';
@@ -70,9 +70,6 @@ const SignUp: React.FC = () => {
       <div className="neu-card w-full max-w-lg p-8">
         {/* Header */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 bg-primary-800 rounded-2xl flex items-center justify-center mb-4">
-            <Stethoscope className="w-9 h-9 text-white" />
-          </div>
           <h1 className="text-2xl font-bold text-base-800">Create Account</h1>
           <p className="text-base-500 mt-1 text-sm">Join MedicoTabs</p>
         </div>

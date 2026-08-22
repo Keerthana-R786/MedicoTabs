@@ -14,8 +14,10 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pendingIncoming, setPendingIncoming] = useState<Referral[]>([]);
+  const [recentReferrals, setRecentReferrals] = useState<Referral[]>([]);
   const [statsError, setStatsError] = useState(false);
   const [incomingError, setIncomingError] = useState(false);
+  const [recentError, setRecentError] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
   const isSpecialist = user?.role === 'specialist_doctor';
@@ -23,6 +25,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     loadStats();
     if (isSpecialist && user) loadIncomingReferrals();
+    if (!isSpecialist && user) loadRecentActivity();
   }, [user, isSpecialist]);
 
   const loadStats = async () => {
@@ -46,9 +49,38 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const loadRecentActivity = async () => {
+    if (!user) return;
+    setRecentError(false);
+    try {
+      const all = await referralsAPI.getAll();
+      const sorted = [...all].sort(
+        (a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+      );
+      setRecentReferrals(sorted.slice(0, 3));
+    } catch {
+      setRecentError(true);
+    }
+  };
+
+  const activityLine = (r: Referral): string => {
+    switch (r.status) {
+      case 'accepted': return `Accepted by ${r.specialistName || 'specialist'}`;
+      case 'denied': return 'Referral declined';
+      case 'completed': return 'Referral completed';
+      case 'archived': return 'Referral archived';
+      case 'routed': return 'Routed to specialist';
+      default: return 'Referral pending';
+    }
+  };
+
   const handleRetry = async () => {
     setRetrying(true);
-    await Promise.all([loadStats(), isSpecialist && user ? loadIncomingReferrals() : Promise.resolve()]);
+    await Promise.all([
+      loadStats(),
+      isSpecialist && user ? loadIncomingReferrals() : Promise.resolve(),
+      !isSpecialist && user ? loadRecentActivity() : Promise.resolve(),
+    ]);
     setRetrying(false);
   };
 
@@ -267,22 +299,32 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="neu-card p-6">
           <h2 className="font-display text-lg font-bold text-base-900 mb-4">Recent Activity</h2>
-          <div className="neu-pressed rounded-2xl p-4 space-y-3">
-            {[
-              { dot: 'bg-success-500', title: 'Referral accepted by Dr. Priya Shah', sub: 'Elena Marquez — Gastroenterology', time: '2 hours ago' },
-              { dot: 'bg-primary-500', title: 'Coverage verified', sub: 'Elena Marquez — HarborCare PPO approved', time: '5 hours ago' },
-              { dot: 'bg-warning-500', title: 'Appointment scheduled', sub: 'Michael Chen — Cardiology evaluation', time: '1 day ago' },
-            ].map((a, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className={`w-2 h-2 ${a.dot} rounded-full mt-2 flex-shrink-0`} />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-base-800">{a.title}</p>
-                  <p className="text-xs text-base-500 mt-0.5">{a.sub}</p>
-                  <p className="text-[10px] text-base-400 mt-0.5">{a.time}</p>
+          {recentError ? (
+            <LoadError title="Couldn’t load recent activity" onRetry={loadRecentActivity} />
+          ) : recentReferrals.length === 0 ? (
+            <div className="neu-pressed rounded-2xl text-center py-10">
+              <p className="text-base-500 text-sm">No referral activity yet</p>
+            </div>
+          ) : (
+            <div className="neu-pressed rounded-2xl p-4 space-y-3">
+              {recentReferrals.map((r) => (
+                <div key={r.id} className="flex items-start gap-3">
+                  <div className={`w-2 h-2 ${
+                    r.status === 'denied' ? 'bg-danger-500' :
+                    r.status === 'accepted' || r.status === 'completed' ? 'bg-success-500' :
+                    'bg-primary-500'
+                  } rounded-full mt-2 flex-shrink-0`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-base-800">{activityLine(r)}</p>
+                    <p className="text-xs text-base-500 mt-0.5">{r.patientName} — {r.requestedSpecialty}</p>
+                    <p className="text-[10px] text-base-400 mt-0.5">
+                      {new Date(r.updatedAt || r.createdAt).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="neu-card p-6">

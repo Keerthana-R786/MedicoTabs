@@ -1,14 +1,23 @@
 import express from 'express';
 import { supabase } from '../config/database.js';
 import { triggerWorkflow } from '../services/yoxaService.js';
+import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 
 const router = express.Router();
+router.use(requireDoctorAuth);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Returns the value if it is a valid UUID, otherwise null (protects FK columns) */
 function safeUuid(value) {
   return typeof value === 'string' && UUID_RE.test(value) ? value : null;
+}
+
+/** Maps a role to the sender label used on messages/notifications */
+function roleLabel(role) {
+  if (role === 'primary_doctor') return 'Primary Doctor';
+  if (role === 'coordinator') return 'Care Coordinator';
+  return 'Specialist';
 }
 
 /**
@@ -27,6 +36,7 @@ router.post('/', async (req, res) => {
       specialistPreference,
       referralReason,
       serviceType,
+      visitType,
       urgency,
       // Contact & coverage details collected on the referral form
       patientContactNumber,
@@ -53,6 +63,10 @@ router.post('/', async (req, res) => {
       });
     }
     
+    // The Coverage Verification agent/stage only applies to advanced treatments
+    // or operations — general checkups never get it created in the tracker.
+    const isAdvancedTreatment = visitType === 'advanced_treatment';
+
     console.log('📝 Creating new referral...');
     
     // Get patient details for workflow
@@ -150,6 +164,7 @@ router.post('/', async (req, res) => {
       requestedSpecialty,
       specialistPreference,
       serviceType,
+      visitType: visitType || 'general_checkup',
       urgency,
       primaryDoctorId,
       primaryDoctorName,
@@ -188,7 +203,11 @@ router.post('/', async (req, res) => {
           stages: [
             { stage: 'create_and_route', status: 'in_progress', startedAt: new Date().toISOString(), agentActions: [] },
             { stage: 'acceptance_and_records', status: 'pending', agentActions: [] },
-            { stage: 'coverage_verification', status: 'pending', agentActions: [] },
+            // Coverage Verification only exists for advanced treatments/operations —
+            // general checkups/visits never get this stage at all.
+            ...(isAdvancedTreatment
+              ? [{ stage: 'coverage_verification', status: 'pending', agentActions: [] }]
+              : []),
             { stage: 'scheduling_and_attendance', status: 'pending', agentActions: [] },
             { stage: 'completion_and_archive', status: 'pending', agentActions: [] },
           ],
@@ -294,13 +313,24 @@ router.post('/', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('referrals')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
+    let query = supabase.from('referrals').select('*').order('created_at', { ascending: false });
+
+    if (req.user.role === 'specialist_doctor') {
+      // Referrals already assigned to this specialist, plus ones still
+      // unclaimed and matching their specialty.
+      const orParts = [`specialist_id.eq.${req.userId}`];
+      if (req.user.specialization) {
+        orParts.push(`and(status.eq.routed,requested_specialty.eq.${req.user.specialization})`);
+      }
+      query = query.or(orParts.join(','));
+    } else {
+      query = query.eq('primary_doctor_id', req.userId);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
-    
+
     // Transform to camelCase
     const transformed = (data || []).map(r => ({
       id: r.id,
@@ -310,18 +340,26 @@ router.get('/', async (req, res) => {
       primaryDoctorId: r.primary_doctor_id,
       primaryDoctorName: r.primary_doctor_name,
       primaryOrganization: r.primary_organization,
+      specialistId: r.specialist_id,
+      specialistName: r.specialist_name,
+      specialistOrganization: r.specialist_organization,
       requestedSpecialty: r.requested_specialty,
       specialistPreference: r.specialist_preference,
       referralReason: r.referral_reason,
       serviceType: r.service_type,
       urgency: r.urgency,
       status: r.status,
+      targetedDocuments: r.targeted_documents,
+      coverageStatus: r.coverage_status,
+      attendanceStatus: r.attendance_status,
+      appointmentDetails: r.appointment_details,
       workflowRunId: r.workflow_run_id,
       trackerId: r.tracker_id,
+      acknowledgmentDeadline: r.acknowledgment_deadline,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }));
-    
+
     res.json(transformed);
   } catch (error) {
     console.error('Error fetching referrals:', error);
@@ -357,15 +395,28 @@ router.get('/:id', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
+    const b = req.body;
+    const updateData = { updated_at: new Date().toISOString() };
+    if (b.status !== undefined) updateData.status = b.status;
+    if (b.specialistId !== undefined) updateData.specialist_id = b.specialistId;
+    if (b.specialistName !== undefined) updateData.specialist_name = b.specialistName;
+    if (b.specialistOrganization !== undefined) updateData.specialist_organization = b.specialistOrganization;
+    if (b.referralReason !== undefined) updateData.referral_reason = b.referralReason;
+    if (b.serviceType !== undefined) updateData.service_type = b.serviceType;
+    if (b.urgency !== undefined) updateData.urgency = b.urgency;
+    if (b.coverageStatus !== undefined) updateData.coverage_status = b.coverageStatus;
+    if (b.attendanceStatus !== undefined) updateData.attendance_status = b.attendanceStatus;
+    if (b.appointmentDetails !== undefined) updateData.appointment_details = b.appointmentDetails;
+
     const { data, error } = await supabase
       .from('referrals')
-      .update(req.body)
+      .update(updateData)
       .eq('id', req.params.id)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     res.json(data);
   } catch (error) {
     console.error('Error updating referral:', error);
@@ -377,22 +428,73 @@ router.put('/:id', async (req, res) => {
  * POST /api/referrals/:id/accept
  * Accept referral (specialist action)
  */
+/**
+ * Advances (or fails) the acceptance_and_records stage on the referral's
+ * flight tracker. Mirrors the pattern used for coverage_verification in
+ * yoxa.js's coverage-preapproval-verification handler.
+ */
+async function patchAcceptanceStage(trackerId, { status, notes, agentAction }) {
+  if (!trackerId) return;
+  const { data: tracker } = await supabase.from('flight_trackers').select('*').eq('id', trackerId).single();
+  if (!tracker) return;
+
+  const now = new Date().toISOString();
+  const updatedStages = (tracker.stages || []).map((stage) => {
+    if (stage.stage !== 'acceptance_and_records') return stage;
+    return {
+      ...stage,
+      status,
+      startedAt: stage.startedAt || now,
+      completedAt: now,
+      notes,
+      agentActions: agentAction ? [...(stage.agentActions || []), agentAction] : stage.agentActions,
+    };
+  });
+
+  await supabase.from('flight_trackers').update({ stages: updatedStages }).eq('id', trackerId);
+}
+
 router.post('/:id/accept', async (req, res) => {
   try {
     const { notes } = req.body;
-    
+
+    const { data: referral, error: findError } = await supabase
+      .from('referrals')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (findError || !referral) return res.status(404).json({ error: 'Referral not found' });
+
+    const specialistName = `${req.user.first_name} ${req.user.last_name}`;
+
     const { data, error } = await supabase
       .from('referrals')
       .update({
         status: 'accepted',
+        specialist_id: req.userId,
+        specialist_name: specialistName,
+        specialist_organization: req.user.organization,
         updated_at: new Date().toISOString(),
       })
       .eq('id', req.params.id)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
+    await patchAcceptanceStage(referral.tracker_id, {
+      status: 'completed',
+      notes: notes ? `Accepted by ${specialistName}: ${notes}` : `Accepted by ${specialistName}`,
+      agentAction: {
+        id: `action-${Date.now()}`,
+        toolName: 'specialist_acceptance',
+        timestamp: new Date().toISOString(),
+        status: 'success',
+        description: 'Specialist accepted the referral',
+        result: specialistName,
+      },
+    });
+
     res.json(data);
   } catch (error) {
     console.error('Error accepting referral:', error);
@@ -407,7 +509,14 @@ router.post('/:id/accept', async (req, res) => {
 router.post('/:id/deny', async (req, res) => {
   try {
     const { reason } = req.body;
-    
+
+    const { data: referral, error: findError } = await supabase
+      .from('referrals')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (findError || !referral) return res.status(404).json({ error: 'Referral not found' });
+
     const { data, error } = await supabase
       .from('referrals')
       .update({
@@ -417,9 +526,40 @@ router.post('/:id/deny', async (req, res) => {
       .eq('id', req.params.id)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
+    // Persist the decline reason by messaging the referring primary doctor —
+    // there is no dedicated column for it, and this makes it actually visible
+    // instead of silently discarded.
+    if (reason && referral.primary_doctor_id) {
+      const senderName = `${req.user.first_name} ${req.user.last_name}`;
+      await supabase.from('messages').insert({
+        referral_id: referral.id,
+        sender_id: req.userId,
+        sender_name: senderName,
+        sender_role: roleLabel(req.user.role),
+        recipient_id: referral.primary_doctor_id,
+        recipient_name: referral.primary_doctor_name,
+        subject: `Referral ${referral.referral_number} declined`,
+        content: reason,
+        is_read: false,
+      });
+
+      await supabase.from('notifications').insert({
+        user_id: referral.primary_doctor_id,
+        type: 'referral',
+        title: 'Referral declined',
+        message: `${senderName} declined referral ${referral.referral_number}: ${reason}`,
+        referral_id: referral.id,
+      });
+    }
+
+    await patchAcceptanceStage(referral.tracker_id, {
+      status: 'requires_attention',
+      notes: reason ? `Declined: ${reason}` : 'Declined by specialist',
+    });
+
     res.json(data);
   } catch (error) {
     console.error('Error denying referral:', error);

@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../config/database.js';
 import { requirePatientAuth } from '../middleware/patientAuth.js';
+import { signPatientToken } from '../utils/tokens.js';
 
 const router = express.Router();
 
@@ -38,10 +39,14 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Referral ID and date of birth are required' });
     }
 
+    // Escape ilike wildcards so a referral ID containing % or _ can't be used
+    // to match unrelated records.
+    const safeReferralId = referralId.trim().replace(/[%_]/g, (c) => `\\${c}`);
+
     const { data: patient, error } = await supabase
       .from('patients')
       .select('*')
-      .ilike('referral_id', referralId.trim())
+      .ilike('referral_id', safeReferralId)
       .single();
 
     if (error || !patient) {
@@ -52,7 +57,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'No patient record matches those details' });
     }
 
-    const token = `pid-${patient.id}`;
+    const token = signPatientToken(patient.id);
 
     res.json({ patient: toPublicPatient(patient), token });
   } catch (error) {

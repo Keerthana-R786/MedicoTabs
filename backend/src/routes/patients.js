@@ -1,14 +1,32 @@
 import express from 'express';
 import multer from 'multer';
 import { supabase } from '../config/database.js';
+import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 
 const router = express.Router();
+router.use(requireDoctorAuth);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const DOCUMENTS_BUCKET = 'patient-documents';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function asUuid(value) {
   return typeof value === 'string' && UUID_RE.test(value) ? value : null;
+}
+
+function toPublicTracker(t) {
+  return {
+    id: t.id,
+    patientId: t.patient_id,
+    visitReason: t.visit_reason,
+    urgency: t.urgency,
+    currentStage: t.current_stage,
+    stages: t.stages,
+    startedAt: t.started_at,
+    completedAt: t.completed_at,
+    signedOffBy: t.signed_off_by,
+    signedOffAt: t.signed_off_at,
+    workflowRunId: t.workflow_run_id,
+  };
 }
 
 function toPublicDocument(row) {
@@ -31,11 +49,30 @@ function toPublicDocument(row) {
  */
 router.get('/', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('patients')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
+    let query = supabase.from('patients').select('*').order('created_at', { ascending: false });
+
+    if (req.user.role === 'specialist_doctor') {
+      // A specialist sees patients tied to referrals they've accepted, plus
+      // ones still unclaimed and matching their specialty.
+      const orParts = [`specialist_id.eq.${req.userId}`];
+      if (req.user.specialization) {
+        orParts.push(`and(status.eq.routed,requested_specialty.eq.${req.user.specialization})`);
+      }
+      const { data: refRows, error: refErr } = await supabase
+        .from('referrals')
+        .select('patient_id')
+        .or(orParts.join(','));
+      if (refErr) throw refErr;
+
+      const patientIds = [...new Set((refRows || []).map((r) => r.patient_id))];
+      if (patientIds.length === 0) return res.json([]);
+      query = query.in('id', patientIds);
+    } else {
+      query = query.eq('primary_doctor_id', req.userId);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       console.error('Supabase error:', error);
       return res.status(500).json({ 
@@ -87,16 +124,38 @@ router.get('/search', async (req, res) => {
     }
     
     const searchTerm = `%${q}%`;
-    
-    const { data, error } = await supabase
+
+    let query = supabase
       .from('patients')
       .select('*')
       .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},referral_id.ilike.${searchTerm},contact_number.like.${searchTerm}`)
       .order('created_at', { ascending: false });
-    
+
+    if (req.user.role !== 'specialist_doctor') {
+      query = query.eq('primary_doctor_id', req.userId);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
-    
-    res.json(data);
+
+    res.json((data || []).map((patient) => ({
+      id: patient.id,
+      referralId: patient.referral_id,
+      firstName: patient.first_name,
+      lastName: patient.last_name,
+      dateOfBirth: patient.date_of_birth,
+      gender: patient.gender,
+      contactNumber: patient.contact_number,
+      email: patient.email,
+      address: patient.address,
+      bloodGroup: patient.blood_group,
+      allergies: patient.allergies,
+      insurance: patient.insurance,
+      primaryDoctorId: patient.primary_doctor_id,
+      createdAt: patient.created_at,
+      updatedAt: patient.updated_at,
+    })));
   } catch (error) {
     console.error('Error searching patients:', error);
     res.status(500).json({ error: 'Failed to search patients' });
@@ -166,7 +225,7 @@ router.post('/', async (req, res) => {
       blood_group: req.body.bloodGroup || req.body.blood_group || null,
       allergies: req.body.allergies || [],
       insurance: req.body.insurance,
-      primary_doctor_id: null, // Set to null for now since we don't have users seeded
+      primary_doctor_id: req.userId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -222,21 +281,45 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
-    const updateData = {
-      ...req.body,
-      updated_at: new Date().toISOString(),
-    };
-    
+    const b = req.body;
+    const updateData = { updated_at: new Date().toISOString() };
+    if (b.firstName !== undefined) updateData.first_name = b.firstName;
+    if (b.lastName !== undefined) updateData.last_name = b.lastName;
+    if (b.dateOfBirth !== undefined) updateData.date_of_birth = b.dateOfBirth;
+    if (b.gender !== undefined) updateData.gender = b.gender;
+    if (b.contactNumber !== undefined) updateData.contact_number = b.contactNumber;
+    if (b.email !== undefined) updateData.email = b.email;
+    if (b.address !== undefined) updateData.address = b.address;
+    if (b.bloodGroup !== undefined) updateData.blood_group = b.bloodGroup;
+    if (b.allergies !== undefined) updateData.allergies = b.allergies;
+    if (b.insurance !== undefined) updateData.insurance = b.insurance;
+
     const { data, error } = await supabase
       .from('patients')
       .update(updateData)
       .eq('id', req.params.id)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
-    res.json(data);
+
+    res.json({
+      id: data.id,
+      referralId: data.referral_id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      dateOfBirth: data.date_of_birth,
+      gender: data.gender,
+      contactNumber: data.contact_number,
+      email: data.email,
+      address: data.address,
+      bloodGroup: data.blood_group,
+      allergies: data.allergies,
+      insurance: data.insurance,
+      primaryDoctorId: data.primary_doctor_id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    });
   } catch (error) {
     console.error('Error updating patient:', error);
     res.status(500).json({ error: 'Failed to update patient' });
@@ -275,10 +358,10 @@ router.get('/:id/trackers', async (req, res) => {
       .select('*')
       .eq('patient_id', req.params.id)
       .order('started_at', { ascending: false });
-    
+
     if (error) throw error;
-    
-    res.json(data);
+
+    res.json((data || []).map(toPublicTracker));
   } catch (error) {
     console.error('Error fetching trackers:', error);
     res.status(500).json({ error: 'Failed to fetch trackers' });
@@ -346,7 +429,7 @@ router.post('/:id/documents', upload.single('file'), async (req, res) => {
         file_type: file.mimetype,
         file_url: storagePath,
         category: finalCategory,
-        uploaded_by: asUuid(req.body.uploadedBy),
+        uploaded_by: asUuid(req.body.uploadedBy) || req.userId,
         size: file.size,
         uploaded_at: new Date().toISOString(),
       })

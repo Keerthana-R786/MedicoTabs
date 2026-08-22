@@ -7,6 +7,7 @@ import FlightTrackerView from '@/components/FlightTracker/FlightTrackerView';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadError from '@/components/ui/LoadError';
+import PromptModal from '@/components/ui/PromptModal';
 
 const DOCUMENT_CATEGORIES: { value: PatientDocument['category']; label: string }[] = [
   { value: 'lab_result', label: 'Lab Result' },
@@ -32,6 +33,7 @@ const PatientDetail: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [signingOffId, setSigningOffId] = useState<string | null>(null);
   const [startingTracking, setStartingTracking] = useState(false);
+  const [showVisitReasonModal, setShowVisitReasonModal] = useState(false);
   const [documentsLoadFailed, setDocumentsLoadFailed] = useState(false);
   const [trackersLoadFailed, setTrackersLoadFailed] = useState(false);
   const [referralsLoadFailed, setReferralsLoadFailed] = useState(false);
@@ -87,10 +89,14 @@ const PatientDetail: React.FC = () => {
     }
   };
 
-  const handleStartTracking = async () => {
+  const handleStartTracking = () => {
     if (!patient || startingTracking) return;
-    const visitReason = prompt('Enter visit reason:');
-    if (!visitReason || !visitReason.trim()) return;
+    setShowVisitReasonModal(true);
+  };
+
+  const handleConfirmVisitReason = async (visitReason: string) => {
+    setShowVisitReasonModal(false);
+    if (!patient || !visitReason.trim()) return;
 
     setStartingTracking(true);
     try {
@@ -386,6 +392,17 @@ const PatientDetail: React.FC = () => {
           )}
         </div>
       </div>
+
+      <PromptModal
+        open={showVisitReasonModal}
+        title="Start Tracking a Visit"
+        label="Visit Reason"
+        placeholder="e.g. Annual checkup"
+        required
+        confirmLabel="Start Tracking"
+        onConfirm={handleConfirmVisitReason}
+        onCancel={() => setShowVisitReasonModal(false)}
+      />
     </div>
   );
 };

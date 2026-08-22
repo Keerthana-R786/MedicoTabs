@@ -21,6 +21,11 @@ export const yoxaConfig = {
     responseSecret: process.env.YOXA_HITL_RESPONSE_SECRET,
     timestampTolerance: parseInt(process.env.WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS || '300'),
   },
+
+  // Shared secret YOXA must send as `Authorization: Bearer <key>` on every
+  // /api/yoxa/* tool call. Configure the same value in the YOXA platform UI
+  // (Bearer Auth) for each connector.
+  toolsApiKey: process.env.YOXA_TOOLS_API_KEY,
 };
 
 // Validate critical configuration
@@ -46,7 +51,11 @@ export function validateYoxaConfig() {
   if (!yoxaConfig.hitl.responseSecret) {
     errors.push('YOXA_HITL_RESPONSE_SECRET is not set');
   }
-  
+
+  if (!yoxaConfig.toolsApiKey) {
+    console.warn('  - YOXA_TOOLS_API_KEY is not set — /api/yoxa/* tool endpoints will run UNAUTHENTICATED');
+  }
+
   if (errors.length > 0) {
     console.warn('⚠ YOXA Configuration Warnings:');
     errors.forEach(err => console.warn(`  - ${err}`));

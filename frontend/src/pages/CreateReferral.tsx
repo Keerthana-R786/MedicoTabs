@@ -40,6 +40,7 @@ const CreateReferral: React.FC = () => {
     // Referral details
     requestedSpecialty: '', specialistPreference: '',
     referralReason: '', serviceType: '',
+    visitType: 'general_checkup' as 'general_checkup' | 'advanced_treatment',
     urgency: 'Routine' as UrgencyLevel,
   });
 
@@ -98,6 +99,7 @@ const CreateReferral: React.FC = () => {
         specialistPreference: formData.specialistPreference || undefined,
         referralReason: formData.referralReason,
         serviceType: formData.serviceType || undefined,
+        visitType: formData.visitType,
         urgency: formData.urgency,
         // Contact & coverage details for the YOXA workflow
         patientContactNumber: formData.patientContactNumber,
@@ -201,7 +203,7 @@ const CreateReferral: React.FC = () => {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wider">Insurance & Coverage</p>
           <div className="grid grid-cols-2 gap-5">
             <Field label="Insurance Provider" required
-              hint="Verified automatically by the Coverage Verification agent">
+              hint="Verified automatically by the Coverage Verification agent for advanced treatments/operations only">
               <input type="text" value={formData.insuranceProvider}
                 onChange={(e) => setFormData({ ...formData, insuranceProvider: e.target.value })}
                 className="neu-input w-full" placeholder="e.g. HarborCare PPO" required />
@@ -231,6 +233,16 @@ const CreateReferral: React.FC = () => {
               className="neu-input w-full" placeholder="Dr. Name or facility" />
           </Field>
         </div>
+
+        <Field label="Visit Type" required
+          hint="Coverage verification only runs for advanced treatments or operations — general checkups skip it entirely">
+          <select value={formData.visitType}
+            onChange={(e) => setFormData({ ...formData, visitType: e.target.value as 'general_checkup' | 'advanced_treatment' })}
+            className="neu-input w-full" required>
+            <option value="general_checkup">General Checkup / Visit</option>
+            <option value="advanced_treatment">Advanced Treatment / Operation</option>
+          </select>
+        </Field>
 
         <Field label="Referral Reason" required>
           <textarea value={formData.referralReason}

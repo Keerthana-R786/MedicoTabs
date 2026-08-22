@@ -9,6 +9,12 @@ function asUuid(value) {
   return typeof value === 'string' && UUID_RE.test(value) ? value : null;
 }
 
+function roleLabel(role) {
+  if (role === 'primary_doctor') return 'Primary Doctor';
+  if (role === 'coordinator') return 'Care Coordinator';
+  return 'Specialist';
+}
+
 function toPublicMessage(row) {
   return {
     id: row.id,
@@ -66,7 +72,7 @@ router.post('/', requireDoctorAuth, async (req, res) => {
         referral_id: asUuid(referralId),
         sender_id: req.userId,
         sender_name: `${req.user.first_name} ${req.user.last_name}`,
-        sender_role: req.user.role === 'primary_doctor' ? 'Primary Doctor' : 'Specialist',
+        sender_role: roleLabel(req.user.role),
         recipient_id: asUuid(recipientId),
         recipient_name: recipientName || 'Care Team',
         subject,

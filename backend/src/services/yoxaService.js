@@ -39,6 +39,7 @@ export async function triggerWorkflow(referralData) {
       requested_specialty: referralData.requestedSpecialty,
       specialist_preference: referralData.specialistPreference,
       service_type: referralData.serviceType,
+      visit_type: referralData.visitType,
       referral_reason: referralData.referralReason,
       primary_doctor_id: referralData.primaryDoctorId,
       primary_doctor_name: referralData.primaryDoctorName,

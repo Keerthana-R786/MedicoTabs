@@ -48,6 +48,14 @@ export const patientPortalAPI = {
     });
     return response.data;
   },
+  downloadDocument: async (documentId: string): Promise<Blob> => {
+    // Same endpoint doctors use — it accepts a patient session token too and
+    // enforces that a patient can only reach their own documents.
+    const response = await patientClient.get(`/api/documents/${documentId}/download`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };
 
 export default patientClient;

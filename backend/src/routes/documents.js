@@ -1,14 +1,17 @@
 import express from 'express';
 import { supabase } from '../config/database.js';
+import { requireDoctorOrPatientAuth } from '../middleware/anyAuth.js';
+import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 
 const router = express.Router();
 const DOCUMENTS_BUCKET = 'patient-documents';
 
 /**
  * GET /api/documents/:id/download
- * Streams the real stored file back to the client
+ * Streams the real stored file back to the client. A patient may only
+ * download their own documents; a doctor may download any.
  */
-router.get('/:id/download', async (req, res) => {
+router.get('/:id/download', requireDoctorOrPatientAuth, async (req, res) => {
   try {
     const { data: doc, error } = await supabase
       .from('patient_documents')
@@ -18,6 +21,10 @@ router.get('/:id/download', async (req, res) => {
 
     if (error || !doc) {
       return res.status(404).json({ error: 'Document not found' });
+    }
+
+    if (req.actorType === 'patient' && doc.patient_id !== req.patientId) {
+      return res.status(403).json({ error: 'You do not have access to this document' });
     }
 
     const { data: fileBlob, error: downloadError } = await supabase.storage
@@ -44,7 +51,7 @@ router.get('/:id/download', async (req, res) => {
  * DELETE /api/documents/:id
  * Removes both the stored file and its metadata row
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireDoctorAuth, async (req, res) => {
   try {
     const { data: doc, error } = await supabase
       .from('patient_documents')
