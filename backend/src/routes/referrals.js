@@ -316,15 +316,23 @@ router.get('/', async (req, res) => {
     let query = supabase.from('referrals').select('*').order('created_at', { ascending: false });
 
     if (req.user.role === 'specialist_doctor') {
-      // Referrals already assigned to this specialist, plus ones still
-      // unclaimed and matching their specialty.
+      // Referrals already assigned to this specialist, ones still unclaimed
+      // and matching their specialty, plus legacy referrals in their
+      // specialty that predate specialist_id ever being tracked (so
+      // historical/completed referrals aren't orphaned from every specialist).
       const orParts = [`specialist_id.eq.${req.userId}`];
       if (req.user.specialization) {
         orParts.push(`and(status.eq.routed,requested_specialty.eq.${req.user.specialization})`);
+        orParts.push(`and(specialist_id.is.null,requested_specialty.eq.${req.user.specialization})`);
       }
       query = query.or(orParts.join(','));
+    } else if (req.user.role === 'coordinator') {
+      // Coordinators oversee referrals across the whole practice, not just
+      // ones they personally created — no ownership filter.
     } else {
-      query = query.eq('primary_doctor_id', req.userId);
+      // Legacy referrals created before ownership was consistently tracked
+      // have no primary_doctor_id — keep them visible rather than orphaning them.
+      query = query.or(`primary_doctor_id.eq.${req.userId},primary_doctor_id.is.null`);
     }
 
     const { data, error } = await query;

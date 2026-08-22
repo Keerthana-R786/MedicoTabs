@@ -52,11 +52,13 @@ router.get('/', async (req, res) => {
     let query = supabase.from('patients').select('*').order('created_at', { ascending: false });
 
     if (req.user.role === 'specialist_doctor') {
-      // A specialist sees patients tied to referrals they've accepted, plus
-      // ones still unclaimed and matching their specialty.
+      // A specialist sees patients tied to referrals they've accepted, ones
+      // still unclaimed and matching their specialty, plus legacy referrals
+      // in their specialty that predate specialist_id being tracked.
       const orParts = [`specialist_id.eq.${req.userId}`];
       if (req.user.specialization) {
         orParts.push(`and(status.eq.routed,requested_specialty.eq.${req.user.specialization})`);
+        orParts.push(`and(specialist_id.is.null,requested_specialty.eq.${req.user.specialization})`);
       }
       const { data: refRows, error: refErr } = await supabase
         .from('referrals')
@@ -67,8 +69,14 @@ router.get('/', async (req, res) => {
       const patientIds = [...new Set((refRows || []).map((r) => r.patient_id))];
       if (patientIds.length === 0) return res.json([]);
       query = query.in('id', patientIds);
+    } else if (req.user.role === 'coordinator') {
+      // Coordinators oversee patients across the whole practice — no
+      // ownership filter.
     } else {
-      query = query.eq('primary_doctor_id', req.userId);
+      // Legacy patients created before ownership was tracked have no
+      // primary_doctor_id — keep them visible to any primary doctor rather
+      // than orphaning them.
+      query = query.or(`primary_doctor_id.eq.${req.userId},primary_doctor_id.is.null`);
     }
 
     const { data, error } = await query;
@@ -131,8 +139,13 @@ router.get('/search', async (req, res) => {
       .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},referral_id.ilike.${searchTerm},contact_number.like.${searchTerm}`)
       .order('created_at', { ascending: false });
 
-    if (req.user.role !== 'specialist_doctor') {
-      query = query.eq('primary_doctor_id', req.userId);
+    if (req.user.role === 'primary_doctor') {
+      // Legacy patients created before ownership was tracked have no
+      // primary_doctor_id — keep them visible to any primary doctor.
+      // Coordinators and specialists get unfiltered search results here
+      // (coordinators oversee the whole practice; specialist search scoping
+      // isn't implemented for this endpoint — only for the main list above).
+      query = query.or(`primary_doctor_id.eq.${req.userId},primary_doctor_id.is.null`);
     }
 
     const { data, error } = await query;

@@ -23,14 +23,29 @@ router.get('/dashboard', async (req, res) => {
   try {
     const { userId, user } = req;
     const isSpecialist = user.role === 'specialist_doctor';
-    const referralOwner = (q) => (isSpecialist ? q.eq('specialist_id', userId) : q.eq('primary_doctor_id', userId));
+    const isCoordinator = user.role === 'coordinator';
+    // Legacy referrals/patients created before ownership was tracked have no
+    // primary_doctor_id/specialist_id — count them too rather than making
+    // them invisible (for specialists, only within their own specialty).
+    // Coordinators oversee the whole practice, so they get no filter at all.
+    const referralOwner = (q) => {
+      if (isCoordinator) return q;
+      if (isSpecialist) {
+        return user.specialization
+          ? q.or(`specialist_id.eq.${userId},and(specialist_id.is.null,requested_specialty.eq.${user.specialization})`)
+          : q.eq('specialist_id', userId);
+      }
+      return q.or(`primary_doctor_id.eq.${userId},primary_doctor_id.is.null`);
+    };
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
     const [totalPatients, activeReferrals, pendingApprovals, completedToday, urgentCases] =
       await Promise.all([
-        isSpecialist ? countRows('patients') : countRows('patients', (q) => q.eq('primary_doctor_id', userId)),
+        (isSpecialist || isCoordinator)
+          ? countRows('patients')
+          : countRows('patients', (q) => q.or(`primary_doctor_id.eq.${userId},primary_doctor_id.is.null`)),
         countRows('referrals', (q) => referralOwner(q).in('status', OPEN_REFERRAL_STATUSES)),
         countRows('hitl_approval_requests', (q) => q.eq('status', 'pending').eq('assigned_to', userId)),
         countRows('referrals', (q) =>
