@@ -7,12 +7,16 @@ import {
 import { statsAPI, referralsAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardStats, Referral } from '@/types';
+import LoadError from '@/components/ui/LoadError';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pendingIncoming, setPendingIncoming] = useState<Referral[]>([]);
+  const [statsError, setStatsError] = useState(false);
+  const [incomingError, setIncomingError] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const isSpecialist = user?.role === 'specialist_doctor';
 
@@ -22,14 +26,30 @@ const Dashboard: React.FC = () => {
   }, [user, isSpecialist]);
 
   const loadStats = async () => {
-    const data = await statsAPI.getDashboard();
-    setStats(data);
+    setStatsError(false);
+    try {
+      const data = await statsAPI.getDashboard();
+      setStats(data);
+    } catch {
+      setStatsError(true);
+    }
   };
 
   const loadIncomingReferrals = async () => {
     if (!user) return;
-    const incoming = await referralsAPI.getAll(); // Backend will filter
-    setPendingIncoming(incoming);
+    setIncomingError(false);
+    try {
+      const incoming = await referralsAPI.getAll(); // Backend will filter
+      setPendingIncoming(incoming);
+    } catch {
+      setIncomingError(true);
+    }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    await Promise.all([loadStats(), isSpecialist && user ? loadIncomingReferrals() : Promise.resolve()]);
+    setRetrying(false);
   };
 
   const urgencyBadge = (urgency: string) => {
@@ -72,6 +92,15 @@ const Dashboard: React.FC = () => {
               Review Now <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+        )}
+
+        {statsError && (
+          <LoadError
+            title="Couldn’t load your stats"
+            description="The dashboard numbers below may be out of date."
+            onRetry={handleRetry}
+            retrying={retrying}
+          />
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -129,7 +158,12 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          {pendingIncoming.length === 0 ? (
+          {incomingError ? (
+            <LoadError
+              title="Couldn’t load incoming referrals"
+              onRetry={loadIncomingReferrals}
+            />
+          ) : pendingIncoming.length === 0 ? (
             <div className="neu-pressed rounded-2xl text-center py-12">
               <Stethoscope className="w-12 h-12 text-base-300 mx-auto mb-3" />
               <p className="text-base-500 text-sm">No incoming referrals right now</p>
@@ -200,6 +234,15 @@ const Dashboard: React.FC = () => {
         <h1 className="page-title">Dashboard</h1>
         <p className="text-base-500 mt-1 text-sm">Overview of your medical practice</p>
       </div>
+
+      {statsError && (
+        <LoadError
+          title="Couldn’t load your stats"
+          description="The dashboard numbers below may be out of date."
+          onRetry={handleRetry}
+          retrying={retrying}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
         {statCards.map((stat) => {

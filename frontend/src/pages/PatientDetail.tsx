@@ -6,6 +6,7 @@ import { Patient, PatientDocument, FlightTracker, Referral } from '@/types';
 import FlightTrackerView from '@/components/FlightTracker/FlightTrackerView';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
+import LoadError from '@/components/ui/LoadError';
 
 const DOCUMENT_CATEGORIES: { value: PatientDocument['category']; label: string }[] = [
   { value: 'lab_result', label: 'Lab Result' },
@@ -30,33 +31,79 @@ const PatientDetail: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [signingOffId, setSigningOffId] = useState<string | null>(null);
+  const [startingTracking, setStartingTracking] = useState(false);
+  const [documentsLoadFailed, setDocumentsLoadFailed] = useState(false);
+  const [trackersLoadFailed, setTrackersLoadFailed] = useState(false);
+  const [referralsLoadFailed, setReferralsLoadFailed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (id) loadPatientData(); }, [id]);
 
   const loadPatientData = async () => {
     if (!id) return;
+
+    // The core patient record is required to render this page at all —
+    // if it fails, tell the user why before sending them back.
     try {
       setPatient(await patientsAPI.getById(id));
-      setDocuments(await documentsAPI.getByPatientId(id));
-      setTrackers(await flightTrackerAPI.getByPatientId(id));
-      setReferrals(await referralsAPI.getByPatientId(id));
     } catch (error) {
-      console.error('Error loading patient data:', error);
-      // If patient not found or error, navigate back
+      console.error('Error loading patient:', error);
+      showError('Couldn’t open this patient', 'The record may have been removed or is temporarily unavailable.');
       navigate('/patients');
+      return;
+    }
+
+    // Everything else degrades independently — a failure here shouldn't
+    // knock the user out of a page that otherwise loaded fine.
+    loadDocuments();
+    loadTrackers();
+    loadReferrals();
+  };
+
+  const loadDocuments = async () => {
+    setDocumentsLoadFailed(false);
+    try {
+      setDocuments(await documentsAPI.getByPatientId(id!));
+    } catch {
+      setDocumentsLoadFailed(true);
+    }
+  };
+
+  const loadTrackers = async () => {
+    setTrackersLoadFailed(false);
+    try {
+      setTrackers(await flightTrackerAPI.getByPatientId(id!));
+    } catch {
+      setTrackersLoadFailed(true);
+    }
+  };
+
+  const loadReferrals = async () => {
+    setReferralsLoadFailed(false);
+    try {
+      setReferrals(await referralsAPI.getByPatientId(id!));
+    } catch {
+      setReferralsLoadFailed(true);
     }
   };
 
   const handleStartTracking = async () => {
-    if (!patient) return;
+    if (!patient || startingTracking) return;
     const visitReason = prompt('Enter visit reason:');
-    if (!visitReason) return;
-    const tracker = await flightTrackerAPI.create({
-      patientId: patient.id, visitReason, urgency: 'Routine',
-    });
-    setTrackers([...trackers, tracker]);
-    setActiveTab('trackers');
+    if (!visitReason || !visitReason.trim()) return;
+
+    setStartingTracking(true);
+    try {
+      const tracker = await flightTrackerAPI.create({
+        patientId: patient.id, visitReason: visitReason.trim(), urgency: 'Routine',
+      });
+      setTrackers((prev) => [...prev, tracker]);
+      setActiveTab('trackers');
+    } catch (err) {
+      showError('Couldn’t start tracking', 'Please try again in a moment.');
+    } finally {
+      setStartingTracking(false);
+    }
   };
 
   const handleSignOff = async (tracker: FlightTracker) => {
@@ -138,9 +185,9 @@ const PatientDetail: React.FC = () => {
           </h1>
           <p className="text-base-500 text-sm mt-0.5">{patient.referralId}</p>
         </div>
-        <button onClick={handleStartTracking}
-          className="neu-btn-success flex items-center gap-2 text-sm">
-          <Plane className="w-4 h-4" /> Start Tracking
+        <button onClick={handleStartTracking} disabled={startingTracking}
+          className="neu-btn-success flex items-center gap-2 text-sm disabled:opacity-50">
+          <Plane className="w-4 h-4" /> {startingTracking ? 'Starting...' : 'Start Tracking'}
         </button>
         <button onClick={() => navigate(`/referrals/new?patientId=${patient?.id}`)}
           className="neu-btn-primary flex items-center gap-2 text-sm">
@@ -200,7 +247,13 @@ const PatientDetail: React.FC = () => {
                   ))}
                 </div>
               </div>
-              {referrals.length > 0 && (
+              {referralsLoadFailed && (
+                <div className="col-span-2">
+                  <h3 className="font-bold text-base-800 mb-3 text-sm uppercase tracking-wider">Referral History</h3>
+                  <LoadError title="Couldn’t load referral history" onRetry={loadReferrals} />
+                </div>
+              )}
+              {!referralsLoadFailed && referrals.length > 0 && (
                 <div className="col-span-2">
                   <h3 className="font-bold text-base-800 mb-3 text-sm uppercase tracking-wider">Referral History</h3>
                   <div className="space-y-2">
@@ -286,7 +339,9 @@ const PatientDetail: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                {documents.length === 0 && (
+                {documentsLoadFailed ? (
+                  <LoadError title="Couldn’t load documents" onRetry={loadDocuments} />
+                ) : documents.length === 0 && (
                   <div className="neu-pressed rounded-2xl text-center py-12">
                     <FileText className="w-14 h-14 text-base-300 mx-auto mb-3" />
                     <p className="text-base-500 text-sm">No documents uploaded</p>
@@ -298,7 +353,10 @@ const PatientDetail: React.FC = () => {
 
           {activeTab === 'trackers' && (
             <div className="space-y-6">
-              {trackers.map((tracker) => (
+              {trackersLoadFailed && (
+                <LoadError title="Couldn’t load trackers" onRetry={loadTrackers} />
+              )}
+              {!trackersLoadFailed && trackers.map((tracker) => (
                 <div key={tracker.id}>
                   <FlightTrackerView tracker={tracker} />
                   {!tracker.signedOffAt && (
@@ -314,13 +372,13 @@ const PatientDetail: React.FC = () => {
                   )}
                 </div>
               ))}
-              {trackers.length === 0 && (
+              {!trackersLoadFailed && trackers.length === 0 && (
                 <div className="neu-pressed rounded-2xl text-center py-12">
                   <Plane className="w-14 h-14 text-base-300 mx-auto mb-3" />
                   <p className="text-base-500 text-sm">No active trackers</p>
-                  <button onClick={handleStartTracking}
-                    className="mt-3 text-primary-500 hover:text-primary-600 font-semibold text-sm transition-colors">
-                    Start tracking a visit
+                  <button onClick={handleStartTracking} disabled={startingTracking}
+                    className="mt-3 text-primary-500 hover:text-primary-600 font-semibold text-sm transition-colors disabled:opacity-50">
+                    {startingTracking ? 'Starting...' : 'Start tracking a visit'}
                   </button>
                 </div>
               )}

@@ -4,17 +4,33 @@ import { hitlAPI } from '@/services/api';
 import { HITLApprovalRequest } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
+import LoadError from '@/components/ui/LoadError';
 
 const Approvals: React.FC = () => {
   const [approvals, setApprovals] = useState<HITLApprovalRequest[]>([]);
   const [selected, setSelected] = useState<HITLApprovalRequest | null>(null);
   const [customResponse, setCustomResponse] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const { success, error: showError } = useToast();
 
   useEffect(() => { loadApprovals(); }, []);
 
-  const loadApprovals = async () => { setApprovals(await hitlAPI.getPending()); };
+  const loadApprovals = async () => {
+    setLoadFailed(false);
+    try {
+      setApprovals(await hitlAPI.getPending());
+    } catch {
+      setLoadFailed(true);
+    }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    await loadApprovals();
+    setRetrying(false);
+  };
 
   const handleRespond = async (optionId?: string) => {
     if (!selected) return;
@@ -65,7 +81,9 @@ const Approvals: React.FC = () => {
                 </div>
               </button>
             ))}
-            {approvals.length === 0 && (
+            {loadFailed ? (
+              <LoadError title="Couldn’t load approvals" onRetry={handleRetry} retrying={retrying} />
+            ) : approvals.length === 0 && (
               <div className="neu-pressed rounded-2xl text-center py-14">
                 <CheckCircle className="w-14 h-14 text-base-300 mx-auto mb-3" />
                 <p className="text-base-500 text-sm">No pending approvals</p>

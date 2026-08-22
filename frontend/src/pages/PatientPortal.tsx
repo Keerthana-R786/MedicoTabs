@@ -8,6 +8,8 @@ import { usePatientAuth } from '@/contexts/PatientAuthContext';
 import { patientPortalAPI } from '@/services/patientPortalApi';
 import { PatientPortalSummary } from '@/types';
 import FlightTrackerView from '@/components/FlightTracker/FlightTrackerView';
+import LoadError from '@/components/ui/LoadError';
+import { useToast } from '@/contexts/ToastContext';
 
 const statusBadge = (status: string) => {
   const c: Record<string, string> = {
@@ -24,21 +26,33 @@ const statusBadge = (status: string) => {
 const PatientPortal: React.FC = () => {
   const { logout } = usePatientAuth();
   const navigate = useNavigate();
+  const { error: showError } = useToast();
   const [summary, setSummary] = useState<PatientPortalSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => { loadSummary(); }, []);
 
   const loadSummary = async () => {
+    setLoadFailed(false);
     try {
       const data = await patientPortalAPI.getSummary();
       setSummary(data);
     } catch (error) {
       console.error('Error loading patient summary:', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    setLoading(true);
+    await loadSummary();
+    setRetrying(false);
   };
 
   const handleLogout = async () => {
@@ -58,18 +72,35 @@ const PatientPortal: React.FC = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading PDF summary:', error);
+      showError('Download failed', 'Could not generate your summary PDF. Please try again.');
     } finally {
       setDownloading(false);
     }
   };
 
-  if (loading || !summary) {
+  if (loading) {
     return (
       <div className="app-shell min-h-screen flex items-center justify-center">
         <div className="app-shell__texture" aria-hidden />
         <div className="relative z-[1] text-center">
           <div className="w-16 h-16 border-4 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-base-500 text-sm font-medium">Loading your records...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadFailed || !summary) {
+    return (
+      <div className="app-shell min-h-screen flex items-center justify-center p-6">
+        <div className="app-shell__texture" aria-hidden />
+        <div className="relative z-[1] w-full max-w-sm">
+          <LoadError
+            title="Couldn’t load your records"
+            description="Please check your connection and try again."
+            onRetry={handleRetry}
+            retrying={retrying}
+          />
         </div>
       </div>
     );

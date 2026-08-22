@@ -6,6 +6,7 @@ import {
 import { notificationsAPI } from '@/services/api';
 import { Notification } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
+import LoadError from '@/components/ui/LoadError';
 
 const TYPE_META: Record<
   Notification['type'],
@@ -20,10 +21,11 @@ const TYPE_META: Record<
 
 const Notifications: React.FC = () => {
   const navigate = useNavigate();
-  const { success } = useToast();
+  const { success, error: showError } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     loadNotifications();
@@ -31,23 +33,34 @@ const Notifications: React.FC = () => {
 
   const loadNotifications = async () => {
     setLoading(true);
+    setLoadFailed(false);
     try {
       const data = await notificationsAPI.getAll();
       setNotifications(data.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
+    } catch {
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleMarkRead = async (id: string) => {
-    await notificationsAPI.markAsRead(id);
-    await loadNotifications();
+    try {
+      await notificationsAPI.markAsRead(id);
+      await loadNotifications();
+    } catch {
+      showError('Couldn’t update this notification', 'Please try again.');
+    }
   };
 
   const handleMarkAllRead = async () => {
-    await notificationsAPI.markAllAsRead();
-    await loadNotifications();
-    success('All caught up', 'Every notification is marked as read.');
+    try {
+      await notificationsAPI.markAllAsRead();
+      await loadNotifications();
+      success('All caught up', 'Every notification is marked as read.');
+    } catch {
+      showError('Couldn’t mark all as read', 'Please try again.');
+    }
   };
 
   const handleOpen = async (notif: Notification) => {
@@ -118,7 +131,11 @@ const Notifications: React.FC = () => {
             </div>
           )}
 
-          {!loading &&
+          {!loading && loadFailed && (
+            <LoadError title="Couldn’t load notifications" onRetry={loadNotifications} />
+          )}
+
+          {!loading && !loadFailed &&
             visible.map((notif) => {
               const meta = TYPE_META[notif.type] || TYPE_META.system;
               const Icon = meta.icon;
@@ -160,7 +177,7 @@ const Notifications: React.FC = () => {
               );
             })}
 
-          {!loading && visible.length === 0 && (
+          {!loading && !loadFailed && visible.length === 0 && (
             <div className="neu-pressed rounded-2xl text-center py-14">
               <Bell className="w-14 h-14 text-base-300 mx-auto mb-3" />
               <p className="text-base-500">

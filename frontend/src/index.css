@@ -280,6 +280,13 @@
   box-shadow: 0 8px 24px rgba(13, 59, 56, 0.22);
 }
 
+/* Notifications dropdown floats over the dark header bar — the default
+   neu-card white highlight shadow reads as a stray glow here, so drop it
+   for a plain dark shadow instead. */
+.app-header__notif-panel {
+  box-shadow: 0 16px 32px rgba(6, 32, 30, 0.35) !important;
+}
+
 .app-header__icon-btn {
   position: relative;
   width: 2.5rem;

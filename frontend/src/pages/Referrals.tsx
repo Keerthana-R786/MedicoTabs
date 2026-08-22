@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, Plus, Filter, Calendar } from 'lucide-react';
 import { referralsAPI } from '@/services/api';
 import { Referral } from '@/types';
+import LoadError from '@/components/ui/LoadError';
 
 const Referrals: React.FC = () => {
   const navigate = useNavigate();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filtered, setFiltered] = useState<Referral[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => { loadReferrals(); }, []);
 
@@ -16,7 +19,20 @@ const Referrals: React.FC = () => {
     setFiltered(filterStatus === 'all' ? referrals : referrals.filter(r => r.status === filterStatus));
   }, [filterStatus, referrals]);
 
-  const loadReferrals = async () => { setReferrals(await referralsAPI.getAll()); };
+  const loadReferrals = async () => {
+    setLoadFailed(false);
+    try {
+      setReferrals(await referralsAPI.getAll());
+    } catch {
+      setLoadFailed(true);
+    }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    await loadReferrals();
+    setRetrying(false);
+  };
 
   const statusColor = (s: string) => ({
     pending: 'bg-base-300 text-base-600',
@@ -126,7 +142,9 @@ const Referrals: React.FC = () => {
             </button>
           ))}
 
-          {filtered.length === 0 && (
+          {loadFailed ? (
+            <LoadError title="Couldn’t load referrals" onRetry={handleRetry} retrying={retrying} />
+          ) : filtered.length === 0 && (
             <div className="neu-pressed rounded-2xl text-center py-14">
               <FileText className="w-14 h-14 text-base-300 mx-auto mb-3" />
               <p className="text-base-500">No referrals found</p>

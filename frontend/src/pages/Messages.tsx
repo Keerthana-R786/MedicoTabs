@@ -5,6 +5,7 @@ import { Message } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
+import LoadError from '@/components/ui/LoadError';
 
 const Messages: React.FC = () => {
   const { user } = useAuth();
@@ -13,14 +14,36 @@ const Messages: React.FC = () => {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => { loadMessages(); }, []);
 
-  const loadMessages = async () => { setMessages(await messagesAPI.getInbox()); };
+  const loadMessages = async () => {
+    setLoadFailed(false);
+    try {
+      setMessages(await messagesAPI.getInbox());
+    } catch {
+      setLoadFailed(true);
+    }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    await loadMessages();
+    setRetrying(false);
+  };
 
   const handleSelectMessage = async (message: Message) => {
     setSelectedMessage(message);
-    if (!message.isRead) { await messagesAPI.markAsRead(message.id); await loadMessages(); }
+    if (!message.isRead) {
+      try {
+        await messagesAPI.markAsRead(message.id);
+        await loadMessages();
+      } catch {
+        showError('Couldn’t update this message', 'It may still show as unread. Please try again.');
+      }
+    }
   };
 
   const handleSendReply = async () => {
@@ -91,7 +114,9 @@ const Messages: React.FC = () => {
                 </div>
               </button>
             ))}
-            {messages.length === 0 && (
+            {loadFailed ? (
+              <LoadError title="Couldn’t load messages" onRetry={handleRetry} retrying={retrying} />
+            ) : messages.length === 0 && (
               <div className="neu-pressed rounded-2xl text-center py-12">
                 <MessageSquare className="w-14 h-14 text-base-300 mx-auto mb-3" />
                 <p className="text-base-500 text-sm">No messages</p>

@@ -3,11 +3,14 @@ import { Search, Plus, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { patientsAPI } from '@/services/api';
 import { Patient } from '@/types';
+import LoadError from '@/components/ui/LoadError';
 
 const Patients: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => { loadPatients(); }, []);
@@ -18,16 +21,31 @@ const Patients: React.FC = () => {
   }, [searchQuery, patients]);
 
   const loadPatients = async () => {
-    const data = await patientsAPI.getAll();
-    setPatients(data);
-    setFilteredPatients(data);
+    setLoadFailed(false);
+    try {
+      const data = await patientsAPI.getAll();
+      setPatients(data);
+      setFilteredPatients(data);
+    } catch {
+      setLoadFailed(true);
+    }
   };
 
   const performSearch = async () => {
-    if (searchQuery.trim()) {
+    if (!searchQuery.trim()) return;
+    try {
       const results = await patientsAPI.search(searchQuery);
       setFilteredPatients(results);
+      setLoadFailed(false);
+    } catch {
+      setLoadFailed(true);
     }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    await loadPatients();
+    setRetrying(false);
   };
 
   return (
@@ -89,7 +107,9 @@ const Patients: React.FC = () => {
             </button>
           ))}
 
-          {filteredPatients.length === 0 && (
+          {loadFailed ? (
+            <LoadError title="Couldn’t load patients" onRetry={handleRetry} retrying={retrying} />
+          ) : filteredPatients.length === 0 && (
             <div className="neu-pressed rounded-2xl text-center py-14">
               <User className="w-14 h-14 text-base-300 mx-auto mb-3" />
               <p className="text-base-500">No patients found</p>

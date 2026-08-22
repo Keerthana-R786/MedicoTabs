@@ -6,6 +6,7 @@ import { Patient, UrgencyLevel } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
+import LoadError from '@/components/ui/LoadError';
 
 // Move Field component outside to prevent re-creation on every render
 const Field: React.FC<{ label: string; required?: boolean; hint?: string; children: React.ReactNode }> = ({ label, required, hint, children }) => (
@@ -25,6 +26,8 @@ const CreateReferral: React.FC = () => {
   const { success, error: showError, toast } = useToast();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
+  const [patientsLoadFailed, setPatientsLoadFailed] = useState(false);
+  const [retryingPatients, setRetryingPatients] = useState(false);
   const [formData, setFormData] = useState({
     patientId: searchParams.get('patientId') || '',
     // Contact & coverage details (auto-filled from patient record, editable)
@@ -57,7 +60,20 @@ const CreateReferral: React.FC = () => {
     }
   }, [formData.patientId, patients]);
 
-  const loadPatients = async () => { setPatients(await patientsAPI.getAll()); };
+  const loadPatients = async () => {
+    setPatientsLoadFailed(false);
+    try {
+      setPatients(await patientsAPI.getAll());
+    } catch {
+      setPatientsLoadFailed(true);
+    }
+  };
+
+  const handleRetryPatients = async () => {
+    setRetryingPatients(true);
+    await loadPatients();
+    setRetryingPatients(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +142,15 @@ const CreateReferral: React.FC = () => {
           <p className="text-base-500 mt-1 text-sm">Refer patient for specialist consultation</p>
         </div>
       </div>
+
+      {patientsLoadFailed && (
+        <LoadError
+          title="Couldn’t load your patient list"
+          description="You won’t be able to select a patient until this loads."
+          onRetry={handleRetryPatients}
+          retrying={retryingPatients}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="neu-card p-6 space-y-6">
         <Field label="Patient" required>

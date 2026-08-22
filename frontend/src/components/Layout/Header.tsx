@@ -52,7 +52,7 @@ const Header: React.FC = () => {
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-3 w-80 neu-card p-0 z-50 overflow-hidden">
+              <div className="absolute right-0 mt-3 w-80 neu-card app-header__notif-panel p-0 z-50 overflow-hidden">
                 <div className="p-4 border-b border-base-300 flex items-center justify-between">
                   <h3 className="font-bold text-base-800 text-sm">Notifications</h3>
                   <Link

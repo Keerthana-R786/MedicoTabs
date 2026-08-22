@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Referral } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
+import LoadError from '@/components/ui/LoadError';
 
 const IncomingReferrals: React.FC = () => {
   const { user } = useAuth();
@@ -21,14 +22,27 @@ const IncomingReferrals: React.FC = () => {
   const [completedReferrals, setCompletedReferrals] = useState<Referral[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => { if (user) loadReferrals(); }, [user]);
 
   const loadReferrals = async () => {
     if (!user) return;
-    setPendingReferrals(await referralsAPI.getAll()); // Backend should filter by user
-    setAcceptedReferrals(await referralsAPI.getAll()); // Backend should filter by status
-    setCompletedReferrals(await referralsAPI.getAll()); // Backend should filter by status
+    setLoadFailed(false);
+    try {
+      setPendingReferrals(await referralsAPI.getAll()); // Backend should filter by user
+      setAcceptedReferrals(await referralsAPI.getAll()); // Backend should filter by status
+      setCompletedReferrals(await referralsAPI.getAll()); // Backend should filter by status
+    } catch {
+      setLoadFailed(true);
+    }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    await loadReferrals();
+    setRetrying(false);
   };
 
   const handleAccept = async (id: string) => {
@@ -127,7 +141,9 @@ const IncomingReferrals: React.FC = () => {
         </div>
 
         <div className="p-6">
-          {current.length === 0 ? (
+          {loadFailed ? (
+            <LoadError title="Couldn’t load incoming referrals" onRetry={handleRetry} retrying={retrying} />
+          ) : current.length === 0 ? (
             <div className="neu-pressed rounded-2xl text-center py-16">
               <FileText className="w-14 h-14 text-base-300 mx-auto mb-3" />
               <p className="text-base-500">
