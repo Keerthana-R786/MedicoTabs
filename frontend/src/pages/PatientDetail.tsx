@@ -1,18 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Upload, Plus, FileText, Plane } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Plus, FileText, Plane, Trash2 } from 'lucide-react';
 import { patientsAPI, documentsAPI, flightTrackerAPI, referralsAPI } from '@/services/api';
 import { Patient, PatientDocument, FlightTracker, Referral } from '@/types';
 import FlightTrackerView from '@/components/FlightTracker/FlightTrackerView';
+import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
+
+const DOCUMENT_CATEGORIES: { value: PatientDocument['category']; label: string }[] = [
+  { value: 'lab_result', label: 'Lab Result' },
+  { value: 'imaging', label: 'Imaging' },
+  { value: 'prescription', label: 'Prescription' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'medical_history', label: 'Medical History' },
+  { value: 'other', label: 'Other' },
+];
 
 const PatientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
+  const { user } = useAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [documents, setDocuments] = useState<PatientDocument[]>([]);
   const [trackers, setTrackers] = useState<FlightTracker[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'documents' | 'trackers'>('info');
+  const [uploadCategory, setUploadCategory] = useState<PatientDocument['category']>('other');
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [signingOffId, setSigningOffId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (id) loadPatientData(); }, [id]);
 
@@ -41,11 +59,62 @@ const PatientDetail: React.FC = () => {
     setActiveTab('trackers');
   };
 
+  const handleSignOff = async (tracker: FlightTracker) => {
+    if (!user) return;
+    setSigningOffId(tracker.id);
+    try {
+      const updated = await flightTrackerAPI.signOff(tracker.id, user.id);
+      setTrackers(trackers.map((t) => (t.id === tracker.id ? updated : t)));
+      success('Tracker signed off', 'This referral journey is marked complete.');
+    } catch (err) {
+      showError('Sign-off failed', 'Could not sign off this tracker. Please try again.');
+    } finally {
+      setSigningOffId(null);
+    }
+  };
+
   const handleDownload = async (doc: PatientDocument) => {
-    const blob = await documentsAPI.download(doc.id);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = doc.fileName; a.click();
+    try {
+      const blob = await documentsAPI.download(doc.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = doc.fileName; a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      showError('Download failed', 'Could not retrieve this document. Please try again.');
+    }
+  };
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !patient) return;
+
+    setUploading(true);
+    try {
+      const doc = await documentsAPI.upload(patient.id, file, uploadCategory);
+      setDocuments([doc, ...documents]);
+      success('Document uploaded', file.name);
+    } catch (err: any) {
+      showError('Upload failed', err.response?.data?.error || 'Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (doc: PatientDocument) => {
+    setDeletingId(doc.id);
+    try {
+      await documentsAPI.delete(doc.id);
+      setDocuments(documents.filter((d) => d.id !== doc.id));
+      success('Document removed', doc.fileName);
+    } catch (err) {
+      showError('Delete failed', 'Could not remove this document. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   if (!patient) return <div className="text-base-500 p-10 text-center">Loading...</div>;
@@ -160,11 +229,32 @@ const PatientDetail: React.FC = () => {
 
           {activeTab === 'documents' && (
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <h3 className="font-bold text-base-800 text-sm uppercase tracking-wider">Documents</h3>
-                <button className="neu-btn-primary flex items-center gap-2 text-sm py-2 px-4">
-                  <Upload className="w-4 h-4" /> Upload
-                </button>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={uploadCategory}
+                    onChange={(e) => setUploadCategory(e.target.value as PatientDocument['category'])}
+                    className="neu-input text-sm py-2"
+                  >
+                    {DOCUMENT_CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileSelected}
+                  />
+                  <button
+                    onClick={handleUploadClick}
+                    disabled={uploading}
+                    className="neu-btn-primary flex items-center gap-2 text-sm py-2 px-4 disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" /> {uploading ? 'Uploading...' : 'Upload'}
+                  </button>
+                </div>
               </div>
               <div className="space-y-2">
                 {documents.map((doc) => (
@@ -181,10 +271,19 @@ const PatientDetail: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => handleDownload(doc)}
-                      className="neu-btn w-9 h-9 flex items-center justify-center rounded-full p-0">
-                      <Download className="w-4 h-4 text-base-500" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleDownload(doc)}
+                        className="neu-btn w-9 h-9 flex items-center justify-center rounded-full p-0">
+                        <Download className="w-4 h-4 text-base-500" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDocument(doc)}
+                        disabled={deletingId === doc.id}
+                        className="neu-btn w-9 h-9 flex items-center justify-center rounded-full p-0 disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4 text-danger-500" />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {documents.length === 0 && (
@@ -200,7 +299,20 @@ const PatientDetail: React.FC = () => {
           {activeTab === 'trackers' && (
             <div className="space-y-6">
               {trackers.map((tracker) => (
-                <FlightTrackerView key={tracker.id} tracker={tracker} />
+                <div key={tracker.id}>
+                  <FlightTrackerView tracker={tracker} />
+                  {!tracker.signedOffAt && (
+                    <div className="flex justify-end mt-3">
+                      <button
+                        onClick={() => handleSignOff(tracker)}
+                        disabled={signingOffId === tracker.id}
+                        className="neu-btn-success flex items-center gap-2 text-sm disabled:opacity-50"
+                      >
+                        {signingOffId === tracker.id ? 'Signing off...' : 'Sign Off — Mark Complete'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
               {trackers.length === 0 && (
                 <div className="neu-pressed rounded-2xl text-center py-12">

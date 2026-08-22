@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Stethoscope, Building2, Phone, Mail, BadgeCheck } from 'lucide-react';
-import { mockDoctorsAPI } from '@/services/mockAPI';
+import { doctorsAPI } from '@/services/api';
 import { User } from '@/types';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -24,7 +24,7 @@ const Doctors: React.FC = () => {
   }, [searchQuery, roleFilter, doctors]);
 
   const loadDoctors = async () => {
-    const data = await mockDoctorsAPI.getAll();
+    const data = await doctorsAPI.getAll();
     setDoctors(data);
     setFiltered(data);
   };
@@ -32,7 +32,7 @@ const Doctors: React.FC = () => {
   const applyFilters = async () => {
     let list = doctors;
     if (searchQuery.trim()) {
-      list = await mockDoctorsAPI.search(searchQuery);
+      list = await doctorsAPI.search(searchQuery);
     }
     if (roleFilter !== 'all') {
       list = list.filter((d) => d.role === roleFilter);

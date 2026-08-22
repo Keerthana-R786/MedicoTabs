@@ -22,7 +22,7 @@ const CreateReferral: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { success, error: showError } = useToast();
+  const { success, error: showError, toast } = useToast();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -72,7 +72,7 @@ const CreateReferral: React.FC = () => {
         showError('Session expired', 'Please log out and log back in, then try again.');
         return;
       }
-      const { referral, workflowRunId } = await referralsAPI.create({
+      const { referral, workflowRunId, workflowError } = await referralsAPI.create({
         patientId: formData.patientId,
         patientName: `${patient.firstName} ${patient.lastName}`,
         primaryDoctorId: user.id,
@@ -91,11 +91,21 @@ const CreateReferral: React.FC = () => {
         insuranceProvider: formData.insuranceProvider,
         insuranceMemberId: formData.insuranceMemberId,
       });
-      const msg = formatSuccess(
-        'referral-created',
-        `${referral.referralNumber} · workflow ${workflowRunId}`
-      );
-      success(msg.title, msg.description);
+
+      if (workflowError) {
+        toast({
+          tone: 'warning',
+          title: 'Referral saved, but the workflow didn’t start',
+          description: `${referral.referralNumber} is in the chart, but YOXA couldn’t be triggered: ${workflowError}. A coordinator will need to route this manually.`,
+          durationMs: 9000,
+        });
+      } else {
+        const msg = formatSuccess(
+          'referral-created',
+          `${referral.referralNumber} · workflow ${workflowRunId}`
+        );
+        success(msg.title, msg.description);
+      }
       navigate(`/patients/${formData.patientId}`);
     } catch (err: any) {
       const msg = formatError(err.message);

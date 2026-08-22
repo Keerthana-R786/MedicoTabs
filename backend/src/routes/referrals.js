@@ -427,4 +427,41 @@ router.post('/:id/deny', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/referrals/:id/messages
+ * Full message thread for a referral
+ */
+router.get('/:id/messages', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('referral_id', req.params.id)
+      .order('sent_at', { ascending: true });
+
+    if (error) throw error;
+
+    const transformed = (data || []).map((m) => ({
+      id: m.id,
+      referralId: m.referral_id,
+      senderId: m.sender_id,
+      senderName: m.sender_name,
+      senderRole: m.sender_role,
+      recipientId: m.recipient_id,
+      recipientName: m.recipient_name,
+      subject: m.subject,
+      content: m.content,
+      attachments: m.attachments,
+      isRead: m.is_read,
+      sentAt: m.sent_at,
+      repliedAt: m.replied_at,
+    }));
+
+    res.json(transformed);
+  } catch (error) {
+    console.error('Error fetching referral messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
 export default router;

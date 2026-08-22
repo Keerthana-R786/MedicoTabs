@@ -1,7 +1,37 @@
 import express from 'express';
+import PDFDocument from 'pdfkit';
 import { supabase } from '../config/database.js';
 
 const router = express.Router();
+const DOCUMENTS_BUCKET = 'patient-documents';
+
+/** Renders plain-text lines into a simple PDF buffer. */
+function buildPdfBuffer(title, lines) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const chunks = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    doc.fontSize(16).font('Helvetica-Bold').text(title);
+    doc.moveDown();
+    doc.fontSize(10).font('Helvetica');
+    lines.forEach((line) => doc.text(line));
+    doc.end();
+  });
+}
+
+/** Uploads a PDF buffer to Storage and returns the storage path. */
+async function storeGeneratedPdf(patientId, fileName, buffer) {
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = `${patientId}/${Date.now()}-${safeName}`;
+  const { error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: false });
+  if (error) throw error;
+  return storagePath;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -855,17 +885,36 @@ router.post('/ehr-documentreference-save', async (req, res) => {
 
     const documentId = `DOC-${Date.now()}`;
     const docRefId = `DocRef-${Date.now()}`;
+    const fileName = document_title || `${document_type || 'document'}_${referral_id}.pdf`;
 
-    const { error: dbError } = await supabase.from('patient_documents').insert({
-      patient_id: asUuid(patient_id),
-      file_name: document_title || `${document_type || 'document'}_${referral_id}.pdf`,
-      file_type: 'application/pdf',
-      file_url: `/documents/${referral_id}/${Date.now()}.pdf`,
-      category: 'referral',
-      uploaded_by: asUuid(authored_by),
-      size: document_content?.length || 0,
-    });
-    if (dbError) console.warn('⚠ Document insert skipped:', dbError.message);
+    const pdfBuffer = await buildPdfBuffer(document_type || 'EHR Document', [
+      `Referral: ${referral_id || 'N/A'}`,
+      `Specialty: ${specialty || 'N/A'}`,
+      `Confidentiality: ${confidentiality || 'normal'}`,
+      `Authored: ${document_date || new Date().toISOString()}`,
+      '',
+      document_content || 'No content provided.',
+    ]);
+
+    let storagePath = null;
+    try {
+      storagePath = await storeGeneratedPdf(patient_id, fileName, pdfBuffer);
+    } catch (storageError) {
+      console.warn('⚠ Document storage upload skipped:', storageError.message);
+    }
+
+    if (storagePath) {
+      const { error: dbError } = await supabase.from('patient_documents').insert({
+        patient_id: asUuid(patient_id),
+        file_name: fileName,
+        file_type: 'application/pdf',
+        file_url: storagePath,
+        category: 'referral',
+        uploaded_by: asUuid(authored_by),
+        size: pdfBuffer.length,
+      });
+      if (dbError) console.warn('⚠ Document insert skipped:', dbError.message);
+    }
 
     res.json({
       document_id: documentId,
@@ -1182,9 +1231,11 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
     const { data: referral } = await findReferral(referral_id);
     const referralNumber = referral?.referral_number || referral_id;
 
-    const pdfContent = [
-      'CONSOLIDATED REFERRAL SUMMARY',
-      '='.repeat(50),
+    const fileName = document_title || `referral_summary_${referralNumber}.pdf`;
+    const documentId = `DOC-SUMMARY-${Date.now()}`;
+    const docRefId = `DR-${referralNumber}-${Math.random().toString(36).substring(4, 8).toUpperCase()}`;
+
+    const pdfBuffer = await buildPdfBuffer('Consolidated Referral Summary', [
       `Referral: ${referralNumber}`,
       `Patient: ${patient_name || 'N/A'}`,
       `Final Urgency: ${final_urgency || referral?.urgency || 'N/A'}`,
@@ -1192,28 +1243,31 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
       `Generated: ${new Date().toISOString()}`,
       '',
       'REFERRAL JOURNEY',
-      '-'.repeat(50),
       journey_summary || 'See flight tracker audit trail.',
       '',
       'AUDIT TRAIL',
-      '-'.repeat(50),
       tracker_audit_trail || 'Stages recorded in flight tracker.',
-    ].join('\n');
+    ]);
 
-    const fileName = document_title || `referral_summary_${referralNumber}.pdf`;
-    const documentId = `DOC-SUMMARY-${Date.now()}`;
-    const docRefId = `DR-${referralNumber}-${Math.random().toString(36).substring(4, 8).toUpperCase()}`;
+    let storagePath = null;
+    try {
+      storagePath = await storeGeneratedPdf(patient_id, fileName, pdfBuffer);
+    } catch (storageError) {
+      console.warn('⚠ Summary storage upload skipped:', storageError.message);
+    }
 
-    const { error: dbError } = await supabase.from('patient_documents').insert({
-      patient_id: asUuid(patient_id),
-      file_name: fileName,
-      file_type: 'application/pdf',
-      file_url: `/documents/${referralNumber}/${Date.now()}.pdf`,
-      category: 'referral',
-      uploaded_by: asUuid(authored_by),
-      size: pdfContent.length,
-    });
-    if (dbError) console.warn('⚠ Summary document insert skipped:', dbError.message);
+    if (storagePath) {
+      const { error: dbError } = await supabase.from('patient_documents').insert({
+        patient_id: asUuid(patient_id),
+        file_name: fileName,
+        file_type: 'application/pdf',
+        file_url: storagePath,
+        category: 'referral',
+        uploaded_by: asUuid(authored_by),
+        size: pdfBuffer.length,
+      });
+      if (dbError) console.warn('⚠ Summary document insert skipped:', dbError.message);
+    }
 
     res.json({
       document_id: documentId,
@@ -1224,7 +1278,7 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
       fhir_resource_id: `DocumentReference/${docRefId}`,
       file_name: fileName,
       output_type: 'pdf',
-      content_length: pdfContent.length,
+      content_length: pdfBuffer.length,
       status: 'generated',
       generated_at: new Date().toISOString(),
       eligible_for_attachment: true,

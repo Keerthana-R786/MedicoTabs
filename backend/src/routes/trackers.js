@@ -2,6 +2,7 @@ import express from 'express';
 import { supabase } from '../config/database.js';
 
 const router = express.Router();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * GET /api/trackers/:id
@@ -113,21 +114,33 @@ router.put('/:id', async (req, res) => {
 router.post('/:id/signoff', async (req, res) => {
   try {
     const { notes, userId } = req.body;
-    
+
     const { data, error } = await supabase
       .from('flight_trackers')
       .update({
-        signed_off_by: userId,
+        signed_off_by: UUID_RE.test(userId || '') ? userId : null,
         signed_off_at: new Date().toISOString(),
         completed_at: new Date().toISOString(),
       })
       .eq('id', req.params.id)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
-    res.json(data);
+
+    res.json({
+      id: data.id,
+      patientId: data.patient_id,
+      visitReason: data.visit_reason,
+      urgency: data.urgency,
+      currentStage: data.current_stage,
+      stages: data.stages,
+      startedAt: data.started_at,
+      completedAt: data.completed_at,
+      signedOffBy: data.signed_off_by,
+      signedOffAt: data.signed_off_at,
+      workflowRunId: data.workflow_run_id,
+    });
   } catch (error) {
     console.error('Error signing off tracker:', error);
     res.status(500).json({ error: 'Failed to sign off tracker' });

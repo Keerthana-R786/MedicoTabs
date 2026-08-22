@@ -121,8 +121,8 @@ export const flightTrackerAPI = {
     const response = await apiClient.post('/api/trackers', trackerData);
     return response.data;
   },
-  signOff: async (trackerId: string, notes?: string): Promise<FlightTracker> => {
-    const response = await apiClient.post(`/api/trackers/${trackerId}/signoff`, { notes });
+  signOff: async (trackerId: string, userId: string, notes?: string): Promise<FlightTracker> => {
+    const response = await apiClient.post(`/api/trackers/${trackerId}/signoff`, { userId, notes });
     return response.data;
   },
 };
@@ -142,7 +142,9 @@ export const referralsAPI = {
     return response.data;
   },
   // This triggers the YOXA multiagent workflow
-  create: async (referralData: Partial<Referral>): Promise<{ referral: Referral; workflowRunId: string }> => {
+  create: async (
+    referralData: Partial<Referral>
+  ): Promise<{ referral: Referral; workflowRunId: string | null; workflowError?: string }> => {
     const response = await apiClient.post('/api/referrals', referralData);
     return response.data;
   },
@@ -194,6 +196,22 @@ export const hitlAPI = {
       selectedOptionId,
       overrideMessage,
     });
+  },
+};
+
+// Doctors API
+export const doctorsAPI = {
+  getAll: async (): Promise<User[]> => {
+    const response = await apiClient.get('/api/doctors');
+    return response.data;
+  },
+  search: async (query: string): Promise<User[]> => {
+    const response = await apiClient.get('/api/doctors/search', { params: { q: query } });
+    return response.data;
+  },
+  getById: async (id: string): Promise<User> => {
+    const response = await apiClient.get(`/api/doctors/${id}`);
+    return response.data;
   },
 };
 

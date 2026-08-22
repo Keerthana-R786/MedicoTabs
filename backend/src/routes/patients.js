@@ -1,7 +1,29 @@
 import express from 'express';
+import multer from 'multer';
 import { supabase } from '../config/database.js';
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const DOCUMENTS_BUCKET = 'patient-documents';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function asUuid(value) {
+  return typeof value === 'string' && UUID_RE.test(value) ? value : null;
+}
+
+function toPublicDocument(row) {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    fileName: row.file_name,
+    fileType: row.file_type,
+    fileUrl: row.file_url,
+    category: row.category,
+    uploadedBy: row.uploaded_by,
+    uploadedAt: row.uploaded_at,
+    size: row.size,
+  };
+}
 
 /**
  * GET /api/patients
@@ -274,10 +296,10 @@ router.get('/:id/documents', async (req, res) => {
       .select('*')
       .eq('patient_id', req.params.id)
       .order('uploaded_at', { ascending: false });
-    
+
     if (error) throw error;
-    
-    res.json(data);
+
+    res.json((data || []).map(toPublicDocument));
   } catch (error) {
     console.error('Error fetching documents:', error);
     res.status(500).json({ error: 'Failed to fetch documents' });
@@ -286,30 +308,61 @@ router.get('/:id/documents', async (req, res) => {
 
 /**
  * POST /api/patients/:id/documents
- * Upload document for patient (placeholder - implement with file upload middleware)
+ * Upload a real file to Supabase Storage and record its metadata
  */
-router.post('/:id/documents', async (req, res) => {
+router.post('/:id/documents', upload.single('file'), async (req, res) => {
   try {
-    // In production, use multer or similar for file uploads
-    // Then upload to Supabase Storage
-    // For now, just store metadata
-    
+    const patientId = req.params.id;
+    const file = req.file;
+    const { category } = req.body;
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+
+    const allowedCategories = ['lab_result', 'imaging', 'prescription', 'referral', 'medical_history', 'other'];
+    const finalCategory = allowedCategories.includes(category) ? category : 'other';
+
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `${patientId}/${Date.now()}-${safeName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(DOCUMENTS_BUCKET)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      return res.status(500).json({ error: 'Failed to store file', details: uploadError.message });
+    }
+
     const { data, error } = await supabase
       .from('patient_documents')
       .insert({
-        patient_id: req.params.id,
-        ...req.body,
+        patient_id: patientId,
+        file_name: file.originalname,
+        file_type: file.mimetype,
+        file_url: storagePath,
+        category: finalCategory,
+        uploaded_by: asUuid(req.body.uploadedBy),
+        size: file.size,
         uploaded_at: new Date().toISOString(),
       })
       .select()
       .single();
-    
-    if (error) throw error;
-    
-    res.status(201).json(data);
+
+    if (error) {
+      // Roll back the stored file if the DB insert failed
+      await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath]);
+      throw error;
+    }
+
+    res.status(201).json(toPublicDocument(data));
   } catch (error) {
     console.error('Error uploading document:', error);
-    res.status(500).json({ error: 'Failed to upload document' });
+    res.status(500).json({ error: 'Failed to upload document', details: error.message });
   }
 });
 

@@ -19,6 +19,9 @@ import statsRouter from './routes/stats.js';
 import patientAuthRouter from './routes/patientAuth.js';
 import patientPortalRouter from './routes/patientPortal.js';
 import notificationsRouter from './routes/notifications.js';
+import documentsRouter from './routes/documents.js';
+import doctorsRouter from './routes/doctors.js';
+import messagesRouter from './routes/messages.js';
 
 // Import utilities
 import { captureRawBody } from './utils/hmacVerifier.js';
@@ -87,6 +90,9 @@ app.use('/api/stats', statsRouter);
 app.use('/api/patient-auth', patientAuthRouter);
 app.use('/api/patient-portal', patientPortalRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/documents', documentsRouter);
+app.use('/api/doctors', doctorsRouter);
+app.use('/api/messages', messagesRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
