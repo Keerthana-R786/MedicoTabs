@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Patient, Referral, FlightTracker, PatientDocument, HITLApprovalRequest, Message, Notification, User, CoverageVerification } from '@/types';
+import { Patient, Referral, FlightTracker, PatientDocument, HITLApprovalRequest, Message, Notification, User, CoverageVerification, NotificationPreferences } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:5000';
 
@@ -37,6 +37,22 @@ export const authAPI = {
   },
   getCurrentUser: async (): Promise<User> => {
     const response = await apiClient.get('/api/auth/me');
+    return response.data;
+  },
+  updateProfile: async (profileData: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    organization?: string;
+    specialization?: string;
+    licenseNumber?: string;
+  }): Promise<User> => {
+    const response = await apiClient.put('/api/auth/profile', profileData);
+    return response.data;
+  },
+  updatePreferences: async (preferences: NotificationPreferences): Promise<User> => {
+    const response = await apiClient.put('/api/auth/preferences', preferences);
     return response.data;
   },
 };

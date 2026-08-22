@@ -1,9 +1,17 @@
 import express from 'express';
 import { supabase } from '../config/database.js';
+import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 
 const router = express.Router();
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const DEFAULT_NOTIFICATION_PREFS = {
+  emailAlerts: true,
+  referralUpdates: true,
+  approvalReminders: true,
+  weeklyDigest: false,
+};
 
 /** Map a users table row to the camelCase shape the frontend expects */
 function toPublicUser(row) {
@@ -19,6 +27,7 @@ function toPublicUser(row) {
     licenseNumber: row.license_number,
     phone: row.phone,
     createdAt: row.created_at,
+    notificationPreferences: row.notification_preferences || DEFAULT_NOTIFICATION_PREFS,
   };
 }
 
@@ -165,6 +174,87 @@ router.get('/me', async (req, res) => {
   } catch (error) {
     console.error('Get current user error:', error);
     res.status(401).json({ error: 'Unauthorized' });
+  }
+});
+
+/**
+ * PUT /api/auth/profile
+ * Update the authenticated user's own profile fields
+ */
+router.put('/profile', requireDoctorAuth, async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, organization, specialization, licenseNumber } = req.body;
+
+    if (email && email !== req.user.email) {
+      const { data: existing } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .neq('id', req.userId)
+        .single();
+
+      if (existing) {
+        return res.status(400).json({ error: 'Another account already uses this email' });
+      }
+    }
+
+    const updateData = {
+      first_name: firstName ?? req.user.first_name,
+      last_name: lastName ?? req.user.last_name,
+      email: email ?? req.user.email,
+      phone: phone ?? req.user.phone,
+      organization: organization ?? req.user.organization,
+      specialization: specialization ?? req.user.specialization,
+      license_number: licenseNumber ?? req.user.license_number,
+    };
+
+    const { data: updated, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', req.userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json(toPublicUser(updated));
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile', details: error.message });
+  }
+});
+
+/**
+ * PUT /api/auth/preferences
+ * Update the authenticated user's notification preferences
+ */
+router.put('/preferences', requireDoctorAuth, async (req, res) => {
+  try {
+    const preferences = { ...DEFAULT_NOTIFICATION_PREFS, ...req.body };
+
+    const { data: updated, error } = await supabase
+      .from('users')
+      .update({ notification_preferences: preferences })
+      .eq('id', req.userId)
+      .select()
+      .single();
+
+    if (error) {
+      // Column doesn't exist yet — schema migration hasn't been run.
+      // Raw Postgres reports 42703; PostgREST's schema-cache miss reports PGRST204.
+      if (error.code === '42703' || error.code === 'PGRST204') {
+        return res.status(501).json({
+          error: 'Notification preferences are not enabled on this database yet',
+          hint: "Run: ALTER TABLE users ADD COLUMN notification_preferences JSONB DEFAULT '{}'::jsonb;",
+        });
+      }
+      throw error;
+    }
+
+    res.json(toPublicUser(updated));
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({ error: 'Failed to update preferences', details: error.message });
   }
 });
 

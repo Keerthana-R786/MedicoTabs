@@ -11,9 +11,16 @@ const ROLE_LABEL: Record<string, string> = {
   coordinator: 'Care Coordinator',
 };
 
+const DEFAULT_PREFS = {
+  emailAlerts: true,
+  referralUpdates: true,
+  approvalReminders: true,
+  weeklyDigest: false,
+};
+
 const Settings: React.FC = () => {
-  const { user } = useAuth();
-  const { success } = useToast();
+  const { user, updateProfile, updatePreferences } = useAuth();
+  const { success, info, error: showError } = useToast();
   const [saving, setSaving] = useState(false);
 
   const [profile, setProfile] = useState({
@@ -26,19 +33,33 @@ const Settings: React.FC = () => {
     licenseNumber: user?.licenseNumber || '',
   });
 
-  const [prefs, setPrefs] = useState({
-    emailAlerts: true,
-    referralUpdates: true,
-    approvalReminders: true,
-    weeklyDigest: false,
-  });
+  const [prefs, setPrefs] = useState(user?.notificationPreferences || DEFAULT_PREFS);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 450));
-    setSaving(false);
-    success('Settings saved', 'Your profile and notification preferences are up to date.');
+    try {
+      await updateProfile(profile);
+
+      try {
+        await updatePreferences(prefs);
+        success('Settings saved', 'Your profile and notification preferences are up to date.');
+      } catch (prefErr: any) {
+        if (prefErr.response?.status === 501) {
+          info(
+            'Profile saved',
+            'Notification preferences aren’t enabled on this database yet — ask an admin to run the setup migration.'
+          );
+        } else {
+          throw prefErr;
+        }
+      }
+    } catch (err: any) {
+      const serverMessage = err.response?.data?.error;
+      showError('Couldn’t save settings', serverMessage || 'Something went wrong. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

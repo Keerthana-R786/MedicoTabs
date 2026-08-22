@@ -1,4 +1,11 @@
 // User and Authentication Types
+export interface NotificationPreferences {
+  emailAlerts: boolean;
+  referralUpdates: boolean;
+  approvalReminders: boolean;
+  weeklyDigest: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -11,6 +18,7 @@ export interface User {
   licenseNumber: string;
   phone: string;
   createdAt: string;
+  notificationPreferences?: NotificationPreferences;
 }
 
 // Patient Types

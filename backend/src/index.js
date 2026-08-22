@@ -18,6 +18,7 @@ import yoxaRouter from './routes/yoxa.js';
 import statsRouter from './routes/stats.js';
 import patientAuthRouter from './routes/patientAuth.js';
 import patientPortalRouter from './routes/patientPortal.js';
+import notificationsRouter from './routes/notifications.js';
 
 // Import utilities
 import { captureRawBody } from './utils/hmacVerifier.js';
@@ -85,6 +86,7 @@ app.use('/api/stats', statsRouter);
 // Patient portal - separate low-privilege identity space, patients only ever see their own data
 app.use('/api/patient-auth', patientAuthRouter);
 app.use('/api/patient-portal', patientPortalRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -102,6 +104,7 @@ app.get('/', (req, res) => {
       stats: '/api/stats',
       patientAuth: '/api/patient-auth',
       patientPortal: '/api/patient-portal',
+      notifications: '/api/notifications',
     },
     yoxaIntegration: {
       triggerWorkflow: 'POST /api/referrals',
