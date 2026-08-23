@@ -19,6 +19,8 @@
 
 [Deployment Guide](DEPLOYMENT.md) · [YOXA Integration](backend/YOXA_INTEGRATION_GUIDE.md) · [Connector Reference](backend/openapi-connectors/README.md) · [Render Deploy](backend/RENDER_DEPLOYMENT.md)
 
+**Live:** [App](https://medico-tabs.vercel.app/) · [API](https://medicotabs.onrender.com) · [YOXA Workflow](https://yoxa.ai/builder/e886a6ae-3e2d-48c0-aa3b-cbf39f94e7c0)
+
 </div>
 
 ---
@@ -167,11 +169,12 @@ npm run dev
 
 ## Deployment
 
-| Service | Host | Directory | Start |
-|:--------|:-----|:----------|:------|
-| Backend | [Render](https://render.com) (`backend/render.yaml`) | `backend` | `npm start` |
-| Frontend | Vercel / Netlify / static hosting | `frontend` | `npm run build` → serve `dist/` |
-| Database & Storage | [Supabase](https://supabase.com) | — | — |
+| Service | Host | Directory | Start | Live URL |
+|:--------|:-----|:----------|:------|:---------|
+| Frontend | [Vercel](https://vercel.com) | `frontend` | `npm run build` → serve `dist/` | [medico-tabs.vercel.app](https://medico-tabs.vercel.app/) |
+| Backend | [Render](https://render.com) (`backend/render.yaml`) | `backend` | `npm start` | [medicotabs.onrender.com](https://medicotabs.onrender.com) |
+| Database & Storage | [Supabase](https://supabase.com) | — | — | — |
+| Workflow engine | [YOXA](https://yoxa.ai) | — | — | [Workflow builder](https://yoxa.ai/builder/e886a6ae-3e2d-48c0-aa3b-cbf39f94e7c0) |
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the full Supabase schema and step-by-step deploy instructions, and [backend/RENDER_DEPLOYMENT.md](backend/RENDER_DEPLOYMENT.md) for the backend specifically.
 
