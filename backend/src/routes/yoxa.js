@@ -134,7 +134,9 @@ router.post('/calculate-urgency-sla', async (req, res) => {
       sla_deadline: slaDeadline,
       acknowledgment_deadline: ackDeadline,
       priority_score: priorityScores[urgency_level] ?? 3,
-      time_remaining_hours: minutes / 60,
+      // Schema declares this as an integer — minutes / 60 produces 0.5 for
+      // Emergency (30 min), which fails YOXA's strict response validation.
+      time_remaining_hours: Math.ceil(minutes / 60),
       escalation_required: urgency_level === 'Emergency',
       calculated_at: new Date().toISOString(),
     });
@@ -171,10 +173,10 @@ router.post('/get-patient-data', async (req, res) => {
       contact_number: patient.contact_number,
       email: patient.email,
       address: patient.address,
-      blood_group: patient.blood_group,
       allergies: Array.isArray(patient.allergies) ? patient.allergies.join(', ') : patient.allergies || '',
       insurance_provider: patient.insurance?.provider || '',
-      insurance_member_id: patient.insurance?.memberId || '',
+      // Schema names this field insurance_id, not insurance_member_id.
+      insurance_id: patient.insurance?.memberId || '',
       medical_history: patient.medical_history || '',
       current_medications: patient.current_medications || '',
     };
@@ -212,13 +214,11 @@ router.post('/get-clinical-summary', async (req, res) => {
     res.json({
       patient_id: patient_id || referral.patient_id,
       referral_id: referral.id,
-      referral_number: referral.referral_number,
       chief_complaint: referral.referral_reason || 'Not specified',
       clinical_findings: 'Pending specialist evaluation',
       diagnosis: 'Under investigation',
       treatment_history: 'No prior treatment documented',
       reason_for_referral: referral.referral_reason,
-      service_type: referral.service_type,
       urgency_level: referral.urgency,
       requested_specialty: referral.requested_specialty,
       primary_doctor_name: referral.primary_doctor_name,
@@ -811,13 +811,6 @@ router.post('/unified-fhir-referral-exchange', async (req, res) => {
       created_at: new Date().toISOString(),
       exchange_endpoint: 'https://medicotabs.onrender.com/fhir/Bundle',
       transaction_signed: true,
-      requesting_provider,
-      requesting_organization,
-      receiving_provider,
-      receiving_organization,
-      urgency,
-      specialty,
-      clinical_summary,
     });
   } catch (error) {
     console.error('FHIR referral exchange error:', error);
@@ -872,10 +865,6 @@ router.post('/secure-targeted-document-portal', async (req, res) => {
       expires_at:
         access_expiration || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       encryption_enabled: true,
-      require_acknowledgment: Boolean(require_acknowledgment),
-      recipient_id,
-      sender_id,
-      patient_id,
     });
   } catch (error) {
     console.error('Document portal error:', error);
@@ -1000,6 +989,12 @@ router.post('/ehr-documentreference-save', async (req, res) => {
       }
     }
 
+    // Matches the response schema in
+    // openapi-connectors/ehr-documentreference-save.yaml exactly
+    // (additionalProperties: false) — document_date/specialty/confidentiality
+    // aren't declared there, so including them made YOXA reject this as
+    // connector_response_schema_mismatch and drop the resulting document off
+    // the workflow's tracked context, stalling everything after this step.
     res.json({
       document_id: documentId,
       patient_id,
@@ -1010,9 +1005,6 @@ router.post('/ehr-documentreference-save', async (req, res) => {
       ehr_location: `/ehr/patients/${patient_id}/documents/${documentId}`,
       fhir_resource_id: `DocumentReference/${docRefId}`,
       indexed: true,
-      document_date,
-      specialty,
-      confidentiality: confidentiality || 'normal',
     });
   } catch (error) {
     console.error('EHR document save error:', error);
