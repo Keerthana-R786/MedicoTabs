@@ -25,10 +25,21 @@ function buildPdfBuffer(title, lines) {
   });
 }
 
-/** Uploads a PDF buffer to Storage and returns the storage path. */
+/**
+ * Uploads a PDF buffer to Storage and returns the storage path.
+ * Requires a real patient UUID — without this check, a missing/invalid
+ * patientId (e.g. the caller omitted it) silently interpolated into the
+ * storage path as the literal string "undefined", producing a document
+ * that uploaded "successfully" but was permanently orphaned: the DB row
+ * got patient_id: null, so it never appeared on any patient's chart.
+ */
 async function storeGeneratedPdf(patientId, fileName, buffer) {
+  const safePatientId = asUuid(patientId);
+  if (!safePatientId) {
+    throw new Error(`Refusing to store document — invalid or missing patientId: ${JSON.stringify(patientId)}`);
+  }
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const storagePath = `${patientId}/${Date.now()}-${safeName}`;
+  const storagePath = `${safePatientId}/${Date.now()}-${safeName}`;
   const { error } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
     .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: false });
