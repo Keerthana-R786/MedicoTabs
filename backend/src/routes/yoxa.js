@@ -349,6 +349,26 @@ router.post('/get-specialist-availability', async (req, res) => {
   try {
     const { specialty_type, referral_id, urgency } = req.body;
 
+    // Slot offsets follow the same urgency framework calculate-urgency-sla
+    // uses (Emergency 30min / Urgent 4h / Routine 24h response windows).
+    // Previously every slot was hardcoded 1-3 days out regardless of
+    // urgency, which contradicted an Emergency/Urgent referral's own SLA
+    // and made specialist-attendance-record temporally impossible to call
+    // honestly within the same run — the appointment could never have
+    // "already happened" yet from the agent's perspective.
+    const isUrgent = urgency === 'Emergency' || urgency === 'Urgent';
+    const slotOffsetsMinutes = isUrgent ? [15, 45, 120] : [24 * 60, 24 * 60 + 300, 2 * 24 * 60];
+
+    const buildSlot = (slotId, offsetMinutes, durationMinutes) => {
+      const dt = new Date(Date.now() + offsetMinutes * 60 * 1000);
+      return {
+        slot_id: slotId,
+        date: dt.toISOString().slice(0, 10),
+        time: dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        duration_minutes: durationMinutes,
+      };
+    };
+
     // Prefer real specialists registered in the system for this specialty
     let specialists = [];
     const { data: dbSpecialists } = await supabase
@@ -364,9 +384,9 @@ router.post('/get-specialist-availability', async (req, res) => {
         organization: s.organization,
         specialty: s.specialization,
         available_slots: [
-          { slot_id: `slot-${idx}-1`, date: new Date(Date.now() + 86400000).toISOString().slice(0, 10), time: '09:00 AM', duration_minutes: 30 },
-          { slot_id: `slot-${idx}-2`, date: new Date(Date.now() + 86400000).toISOString().slice(0, 10), time: '02:00 PM', duration_minutes: 30 },
-          { slot_id: `slot-${idx}-3`, date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10), time: '10:30 AM', duration_minutes: 30 },
+          buildSlot(`slot-${idx}-1`, slotOffsetsMinutes[0], 30),
+          buildSlot(`slot-${idx}-2`, slotOffsetsMinutes[1], 30),
+          buildSlot(`slot-${idx}-3`, slotOffsetsMinutes[2], 30),
         ],
       }));
     } else {
@@ -377,9 +397,9 @@ router.post('/get-specialist-availability', async (req, res) => {
           organization: 'Lakeside Medical Center',
           specialty: specialty_type,
           available_slots: [
-            { slot_id: 'slot-001', date: new Date(Date.now() + 86400000).toISOString().slice(0, 10), time: '09:00 AM', duration_minutes: 30 },
-            { slot_id: 'slot-002', date: new Date(Date.now() + 86400000).toISOString().slice(0, 10), time: '02:00 PM', duration_minutes: 30 },
-            { slot_id: 'slot-003', date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10), time: '10:30 AM', duration_minutes: 30 },
+            buildSlot('slot-001', slotOffsetsMinutes[0], 30),
+            buildSlot('slot-002', slotOffsetsMinutes[1], 30),
+            buildSlot('slot-003', slotOffsetsMinutes[2], 30),
           ],
         },
         {
@@ -388,8 +408,8 @@ router.post('/get-specialist-availability', async (req, res) => {
           organization: 'University Hospital',
           specialty: specialty_type,
           available_slots: [
-            { slot_id: 'slot-004', date: new Date().toISOString().slice(0, 10), time: '03:00 PM', duration_minutes: 45 },
-            { slot_id: 'slot-005', date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), time: '11:00 AM', duration_minutes: 45 },
+            buildSlot('slot-004', slotOffsetsMinutes[0], 45),
+            buildSlot('slot-005', slotOffsetsMinutes[2], 45),
           ],
         },
       ];
