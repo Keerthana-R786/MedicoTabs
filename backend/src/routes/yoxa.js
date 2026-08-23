@@ -1319,20 +1319,15 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
       if (dbError) console.warn('⚠ Summary document insert skipped:', dbError.message);
     }
 
-    res.json({
-      document_id: documentId,
-      referral_id,
-      referral_number: referralNumber,
-      patient_id,
-      document_reference_id: docRefId,
-      fhir_resource_id: `DocumentReference/${docRefId}`,
-      file_name: fileName,
-      output_type: 'pdf',
-      content_length: pdfBuffer.length,
-      status: 'generated',
-      generated_at: new Date().toISOString(),
-      eligible_for_attachment: true,
-    });
+    // Return the actual PDF file instead of JSON metadata
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Yoxa-Deployment-Secret');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(pdfBuffer);
   } catch (error) {
     console.error('Consolidated referral summary PDF error:', error);
     res.status(500).json({ error: 'Failed to generate consolidated referral summary PDF' });
