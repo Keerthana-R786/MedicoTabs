@@ -1,16 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, X, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import InlineAlert from '@/components/ui/InlineAlert';
 import HeroBackdrop from '@/components/HeroBackdrop';
 import { formatError } from '@/utils/messages';
-
-const DEMO_ACCOUNTS = [
-  { email: 'dr.smith@northharbor.com', name: 'Dr. John Smith', role: 'Primary Care Doctor' },
-  { email: 'dr.shah@lakeside.com', name: 'Dr. Priya Shah', role: 'Specialist — Gastroenterology' },
-  { email: 'coordinator@harborcare.com', name: 'Sarah Johnson', role: 'Care Coordinator' },
-];
 
 const Login: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
@@ -19,18 +13,8 @@ const Login: React.FC = () => {
   const [error, setError] = useState<{ title: string; description: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!showDemoModal) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowDemoModal(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showDemoModal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,20 +22,6 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(formatError(err.message || 'Login failed'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (demoEmail: string) => {
-    setError(null);
-    setLoading(true);
-    setShowDemoModal(false);
-    try {
-      await login(demoEmail, 'demo');
       navigate('/dashboard');
     } catch (err: any) {
       setError(formatError(err.message || 'Login failed'));
@@ -154,22 +124,6 @@ const Login: React.FC = () => {
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
-
-            <div className="mt-7">
-              <button
-                type="button"
-                onClick={() => setShowDemoModal(true)}
-                disabled={loading}
-                className="neu-btn w-full flex items-center justify-between px-4 py-3.5 text-left disabled:opacity-50"
-              >
-                <div>
-                  <p className="text-xs font-bold text-primary-700 uppercase tracking-wider">
-                    Quick Demo Access
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-primary-600 shrink-0" aria-hidden />
-              </button>
-            </div>
           </>
         ) : (
           <div className="text-center py-6">
@@ -194,59 +148,6 @@ const Login: React.FC = () => {
         )}
       </div>
       </div>
-
-      {showDemoModal && (
-        <div
-          className="demo-modal-backdrop"
-          role="presentation"
-          onClick={() => setShowDemoModal(false)}
-        >
-          <div
-            className="demo-modal neu-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="demo-modal-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3 mb-5">
-              <div>
-                <h2 id="demo-modal-title" className="font-display text-lg font-bold text-base-800 tracking-tight">
-                  Quick Demo Access
-                </h2>
-                <p className="text-xs text-base-500 mt-1">
-                  Choose a role to sign in instantly
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowDemoModal(false)}
-                className="neu-btn w-9 h-9 flex items-center justify-center rounded-full p-0 shrink-0"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4 text-base-500" />
-              </button>
-            </div>
-
-            <div className="space-y-2.5">
-              {DEMO_ACCOUNTS.map((demo) => (
-                <button
-                  key={demo.email}
-                  type="button"
-                  onClick={() => handleDemoLogin(demo.email)}
-                  disabled={loading}
-                  className="neu-btn w-full flex items-center justify-between px-4 py-3.5 text-left disabled:opacity-50"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-base-800">{demo.name}</p>
-                    <p className="text-xs text-base-500 mt-0.5">{demo.role}</p>
-                  </div>
-                  <span className="text-xs text-primary-600 font-semibold shrink-0">Sign in</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

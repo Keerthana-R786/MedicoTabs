@@ -2,6 +2,7 @@ import express from 'express';
 import PDFDocument from 'pdfkit';
 import { supabase } from '../config/database.js';
 import { requireYoxaAuth } from '../middleware/yoxaAuth.js';
+import { advanceTrackerStage, buildAgentAction } from '../utils/trackerStages.js';
 
 const router = express.Router();
 router.use(requireYoxaAuth);
@@ -106,6 +107,13 @@ router.post('/calculate-urgency-sla', async (req, res) => {
           .from('referrals')
           .update({ acknowledgment_deadline: slaDeadline, updated_at: new Date().toISOString() })
           .eq('id', referral.id);
+
+        await advanceTrackerStage(referral.tracker_id, 'create_and_route', {
+          agentAction: buildAgentAction('calculate_urgency_sla', {
+            description: `SLA calculated for ${urgency_level || 'referral'} urgency`,
+            result: `${minutes} min response window`,
+          }),
+        });
       }
     }
 
@@ -376,6 +384,18 @@ router.post('/get-specialist-availability', async (req, res) => {
       ];
     }
 
+    if (referral_id) {
+      const { data: referral } = await findReferral(referral_id);
+      if (referral) {
+        await advanceTrackerStage(referral.tracker_id, 'scheduling_and_attendance', {
+          agentAction: buildAgentAction('get_specialist_availability', {
+            description: `Checked availability for ${specialty_type || 'specialist'}`,
+            result: `${specialists.length} specialist(s) found`,
+          }),
+        });
+      }
+    }
+
     res.json({
       referral_id,
       specialists_available: urgency === 'Emergency' ? specialists : specialists.slice(0, 1),
@@ -420,6 +440,15 @@ router.post('/book-appointment', async (req, res) => {
           updated_at: new Date().toISOString(),
         })
         .eq('id', referral.id);
+
+      await advanceTrackerStage(referral.tracker_id, 'scheduling_and_attendance', {
+        status: 'in_progress',
+        notes: `Appointment booked for ${appointment_date} ${appointment_time}`,
+        agentAction: buildAgentAction('book_appointment', {
+          description: `Appointment booked with specialist ${specialist_id || ''}`.trim(),
+          result: confirmationNumber,
+        }),
+      });
     }
 
     res.json({
@@ -751,6 +780,15 @@ router.post('/unified-fhir-referral-exchange', async (req, res) => {
           updated_at: new Date().toISOString(),
         })
         .eq('id', referral.id);
+
+      await advanceTrackerStage(referral.tracker_id, 'create_and_route', {
+        status: 'completed',
+        notes: 'Referral routed via FHIR exchange',
+        agentAction: buildAgentAction('unified_fhir_referral_exchange', {
+          description: `FHIR bundle exchanged with ${receiving_organization || receiving_provider || 'receiving provider'}`,
+          result: bundleId,
+        }),
+      });
     }
 
     res.json({
@@ -796,11 +834,20 @@ router.post('/secure-targeted-document-portal', async (req, res) => {
 
     // Persist the targeted packet selection on the referral
     const { data: referral } = await findReferral(referral_id);
-    if (referral && Array.isArray(document_ids) && document_ids.length > 0) {
-      await supabase
-        .from('referrals')
-        .update({ targeted_documents: document_ids, updated_at: new Date().toISOString() })
-        .eq('id', referral.id);
+    if (referral) {
+      if (Array.isArray(document_ids) && document_ids.length > 0) {
+        await supabase
+          .from('referrals')
+          .update({ targeted_documents: document_ids, updated_at: new Date().toISOString() })
+          .eq('id', referral.id);
+      }
+
+      await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
+        agentAction: buildAgentAction('secure_targeted_document_portal', {
+          description: `Shared ${Array.isArray(document_ids) ? document_ids.length : 0} document(s) via secure portal`,
+          result: sessionId,
+        }),
+      });
     }
 
     res.json({
@@ -843,6 +890,18 @@ router.post('/specialist-alert', async (req, res) => {
     } = req.body;
 
     const alertId = `ALERT-${Date.now()}`;
+
+    if (referral_id) {
+      const { data: referral } = await findReferral(referral_id);
+      if (referral) {
+        await advanceTrackerStage(referral.tracker_id, 'create_and_route', {
+          agentAction: buildAgentAction('specialist_alert', {
+            description: `${specialist_name || 'Specialist'} alerted about the referral`,
+            result: 'Notified',
+          }),
+        });
+      }
+    }
 
     await safeNotify({
       userId: specialist_id,
@@ -918,6 +977,18 @@ router.post('/ehr-documentreference-save', async (req, res) => {
       if (dbError) console.warn('⚠ Document insert skipped:', dbError.message);
     }
 
+    if (referral_id) {
+      const { data: referral } = await findReferral(referral_id);
+      if (referral) {
+        await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
+          agentAction: buildAgentAction('ehr_documentreference_save', {
+            description: `${document_type || 'Document'} saved to EHR`,
+            result: fileName,
+          }),
+        });
+      }
+    }
+
     res.json({
       document_id: documentId,
       patient_id,
@@ -974,6 +1045,18 @@ router.post('/specialist-attendance-record', async (req, res) => {
           updated_at: new Date().toISOString(),
         })
         .eq('id', referral.id);
+
+      await advanceTrackerStage(referral.tracker_id, 'scheduling_and_attendance', {
+        status: attended ? 'completed' : 'requires_attention',
+        notes: attended
+          ? 'Attendance confirmed and consultation completed'
+          : `Attendance status: ${attendance_status || 'unconfirmed'}`,
+        agentAction: buildAgentAction('specialist_attendance_record', {
+          status: attended ? 'success' : 'failed',
+          description: 'Specialist recorded attendance outcome',
+          result: attendance_status || 'unconfirmed',
+        }),
+      });
     }
 
     res.json({
@@ -1116,44 +1199,20 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
     // so the UI shows "Covered" / "Cannot be claimed" without depending on how
     // the external workflow chooses to phrase its own stage update.
     if (referral?.tracker_id) {
-      const { data: tracker } = await supabase
-        .from('flight_trackers')
-        .select('*')
-        .eq('id', referral.tracker_id)
-        .single();
-
-      if (tracker) {
-        const now = new Date().toISOString();
-        const resultText = isEligible ? 'Covered' : 'Cannot Be Claimed';
-        const updatedStages = (tracker.stages || []).map((stage) => {
-          if (stage.stage !== 'coverage_verification') return stage;
-          return {
-            ...stage,
-            status: isEligible ? 'completed' : 'requires_attention',
-            startedAt: stage.startedAt || now,
-            completedAt: now,
-            notes: resultText,
-            copay: isEligible ? copay : undefined,
-            preApprovalNumber: isEligible ? preApprovalNumber : undefined,
-            agentActions: [
-              ...(stage.agentActions || []),
-              {
-                id: `action-${Date.now()}`,
-                toolName: 'coverage_preapproval_verification',
-                timestamp: now,
-                status: isEligible ? 'success' : 'failed',
-                description: `Insurance coverage check for ${specialty_type || 'specialist'} ${service_type || 'treatment'}`,
-                result: resultText,
-              },
-            ],
-          };
-        });
-
-        await supabase
-          .from('flight_trackers')
-          .update({ stages: updatedStages })
-          .eq('id', tracker.id);
-      }
+      const resultText = isEligible ? 'Covered' : 'Cannot Be Claimed';
+      await advanceTrackerStage(referral.tracker_id, 'coverage_verification', {
+        status: isEligible ? 'completed' : 'requires_attention',
+        notes: resultText,
+        extra: {
+          copay: isEligible ? copay : undefined,
+          preApprovalNumber: isEligible ? preApprovalNumber : undefined,
+        },
+        agentAction: buildAgentAction('coverage_preapproval_verification', {
+          status: isEligible ? 'success' : 'failed',
+          description: `Insurance coverage check for ${specialty_type || 'specialist'} ${service_type || 'treatment'}`,
+          result: resultText,
+        }),
+      });
     }
 
     res.json({
@@ -1202,7 +1261,21 @@ router.post('/appointment-slot-acceptance', async (req, res) => {
       return res.status(400).json({ error: 'slot_date and slot_time are required' });
     }
 
+    const { data: referral } = await findReferral(referral_id);
+
     if (!patient_accepted) {
+      if (referral) {
+        await advanceTrackerStage(referral.tracker_id, 'scheduling_and_attendance', {
+          status: 'requires_attention',
+          notes: 'Patient declined the offered appointment slot',
+          agentAction: buildAgentAction('appointment_slot_acceptance', {
+            status: 'failed',
+            description: `Slot declined for ${slot_date} ${slot_time}`,
+            result: 'Declined',
+          }),
+        });
+      }
+
       return res.json({
         referral_id,
         patient_id,
@@ -1218,7 +1291,6 @@ router.post('/appointment-slot-acceptance', async (req, res) => {
     const bookingConfirmation = `BK-${Date.now()}`;
     const location = organization || specialist_name || 'Specialist clinic';
 
-    const { data: referral } = await findReferral(referral_id);
     if (referral) {
       await supabase
         .from('referrals')
@@ -1237,6 +1309,15 @@ router.post('/appointment-slot-acceptance', async (req, res) => {
           updated_at: new Date().toISOString(),
         })
         .eq('id', referral.id);
+
+      await advanceTrackerStage(referral.tracker_id, 'scheduling_and_attendance', {
+        status: 'in_progress',
+        notes: `Appointment scheduled for ${slot_date} ${slot_time}`,
+        agentAction: buildAgentAction('appointment_slot_acceptance', {
+          description: `Slot accepted with ${specialist_name || 'specialist'}`,
+          result: bookingConfirmation,
+        }),
+      });
     }
 
     res.json({
@@ -1319,15 +1400,37 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
       if (dbError) console.warn('⚠ Summary document insert skipped:', dbError.message);
     }
 
-    // Return the actual PDF file instead of JSON metadata
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Yoxa-Deployment-Secret');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.send(pdfBuffer);
+    if (referral?.tracker_id) {
+      await advanceTrackerStage(referral.tracker_id, 'completion_and_archive', {
+        status: 'completed',
+        notes: 'Consolidated referral summary generated and archived',
+        agentAction: buildAgentAction('consolidated_referral_summary_pdf', {
+          description: 'Final referral summary PDF generated',
+          result: fileName,
+        }),
+      });
+    }
+
+    // JSON metadata, matching the response schema in
+    // openapi-connectors/consolidated-referral-summary-pdf.yaml (the contract
+    // uploaded to YOXA). YOXA's workflow reads eligible_for_attachment/
+    // document_id from this response to drive its patient-email step — a raw
+    // PDF binary here breaks that step since it doesn't match the declared
+    // JSON schema.
+    res.json({
+      document_id: documentId,
+      referral_id,
+      referral_number: referralNumber,
+      patient_id,
+      document_reference_id: docRefId,
+      fhir_resource_id: `DocumentReference/${docRefId}`,
+      file_name: fileName,
+      output_type: 'pdf',
+      content_length: pdfBuffer.length,
+      status: 'generated',
+      generated_at: new Date().toISOString(),
+      eligible_for_attachment: true,
+    });
   } catch (error) {
     console.error('Consolidated referral summary PDF error:', error);
     res.status(500).json({ error: 'Failed to generate consolidated referral summary PDF' });

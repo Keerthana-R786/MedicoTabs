@@ -3,7 +3,7 @@
 const KNOWN: Record<string, { title: string; description: string }> = {
   'Invalid credentials': {
     title: 'Sign-in didn’t go through',
-    description: 'Check your email and password, then try again. Demo accounts are listed below.',
+    description: 'Check your email and password, then try again.',
   },
   'An account with this email already exists': {
     title: 'That email is already registered',

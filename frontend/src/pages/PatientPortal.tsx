@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Stethoscope, LogOut, Download, FileText, Droplet,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { usePatientAuth } from '@/contexts/PatientAuthContext';
 import { patientPortalAPI } from '@/services/patientPortalApi';
-import { PatientPortalSummary } from '@/types';
+import { PatientPortalSummary, PatientPortalTracker } from '@/types';
 import FlightTrackerView from '@/components/FlightTracker/FlightTrackerView';
 import LoadError from '@/components/ui/LoadError';
 import { useToast } from '@/contexts/ToastContext';
@@ -47,6 +47,27 @@ const PatientPortal: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // YOXA's workflow agents advance tracker stages in the background as they
+  // work through a referral — poll quietly while any tracker is still open
+  // so the Flight Tracker view catches up without a manual page reload.
+  const summaryRef = useRef<PatientPortalSummary | null>(null);
+  useEffect(() => { summaryRef.current = summary; }, [summary]);
+
+  useEffect(() => {
+    const isTrackerActive = (t: PatientPortalTracker) =>
+      !t.signedOffAt && t.stages[t.stages.length - 1]?.status !== 'completed';
+
+    const interval = setInterval(async () => {
+      if (!summaryRef.current?.trackers.some(isTrackerActive)) return;
+      try {
+        setSummary(await patientPortalAPI.getSummary());
+      } catch {
+        // Silent refresh — leave the existing summary in place on failure.
+      }
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleRetry = async () => {
     setRetrying(true);

@@ -2,6 +2,7 @@ import express from 'express';
 import { supabase } from '../config/database.js';
 import { triggerWorkflow } from '../services/yoxaService.js';
 import { requireDoctorAuth } from '../middleware/doctorAuth.js';
+import { advanceTrackerStage, buildAgentAction } from '../utils/trackerStages.js';
 
 const router = express.Router();
 router.use(requireDoctorAuth);
@@ -436,32 +437,6 @@ router.put('/:id', async (req, res) => {
  * POST /api/referrals/:id/accept
  * Accept referral (specialist action)
  */
-/**
- * Advances (or fails) the acceptance_and_records stage on the referral's
- * flight tracker. Mirrors the pattern used for coverage_verification in
- * yoxa.js's coverage-preapproval-verification handler.
- */
-async function patchAcceptanceStage(trackerId, { status, notes, agentAction }) {
-  if (!trackerId) return;
-  const { data: tracker } = await supabase.from('flight_trackers').select('*').eq('id', trackerId).single();
-  if (!tracker) return;
-
-  const now = new Date().toISOString();
-  const updatedStages = (tracker.stages || []).map((stage) => {
-    if (stage.stage !== 'acceptance_and_records') return stage;
-    return {
-      ...stage,
-      status,
-      startedAt: stage.startedAt || now,
-      completedAt: now,
-      notes,
-      agentActions: agentAction ? [...(stage.agentActions || []), agentAction] : stage.agentActions,
-    };
-  });
-
-  await supabase.from('flight_trackers').update({ stages: updatedStages }).eq('id', trackerId);
-}
-
 router.post('/:id/accept', async (req, res) => {
   try {
     const { notes } = req.body;
@@ -490,17 +465,13 @@ router.post('/:id/accept', async (req, res) => {
 
     if (error) throw error;
 
-    await patchAcceptanceStage(referral.tracker_id, {
+    await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
       status: 'completed',
       notes: notes ? `Accepted by ${specialistName}: ${notes}` : `Accepted by ${specialistName}`,
-      agentAction: {
-        id: `action-${Date.now()}`,
-        toolName: 'specialist_acceptance',
-        timestamp: new Date().toISOString(),
-        status: 'success',
+      agentAction: buildAgentAction('specialist_acceptance', {
         description: 'Specialist accepted the referral',
         result: specialistName,
-      },
+      }),
     });
 
     res.json(data);
@@ -563,7 +534,7 @@ router.post('/:id/deny', async (req, res) => {
       });
     }
 
-    await patchAcceptanceStage(referral.tracker_id, {
+    await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
       status: 'requires_attention',
       notes: reason ? `Declined: ${reason}` : 'Declined by specialist',
     });

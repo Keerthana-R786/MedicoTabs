@@ -817,25 +817,6 @@ button {
   }
 }
 
-/* Demo access modal */
-.demo-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: rgba(15, 23, 42, 0.35);
-  animation: splash-fade-in 0.2s ease-out both;
-}
-
-.demo-modal {
-  width: min(24rem, 100%);
-  padding: 1.5rem 1.35rem;
-  animation: ui-toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
 /* Generic popup backdrop (confirmation/prompt dialogs). Any .neu-card placed
    over this dark overlay must lose its white neu highlight — it reads as a
    stray glow against the dark backdrop instead of blending in. */
@@ -861,8 +842,6 @@ button {
   .ui-toast {
     animation: none;
   }
-  .demo-modal,
-  .demo-modal-backdrop,
   .ui-modal-backdrop,
   .ui-modal-backdrop .neu-card {
     animation: none;
@@ -1125,8 +1104,7 @@ button {
   width: 100%;
 }
 
-.auth-hero .neu-card,
-.auth-hero .demo-modal.neu-card {
+.auth-hero .neu-card {
   box-shadow:
     10px 14px 28px rgba(6, 32, 30, 0.45),
     -6px -6px 18px rgba(61, 164, 157, 0.18),

@@ -42,6 +42,26 @@ const PatientDetail: React.FC = () => {
 
   useEffect(() => { if (id) loadPatientData(); }, [id]);
 
+  // YOXA's workflow agents advance tracker stages in the background as they
+  // work through a referral — poll while any tracker is still open so the
+  // Flight Tracker view catches up without a manual page reload.
+  const trackersRef = useRef<FlightTracker[]>([]);
+  useEffect(() => { trackersRef.current = trackers; }, [trackers]);
+
+  useEffect(() => {
+    if (!id) return;
+    const isTrackerActive = (t: FlightTracker) =>
+      !t.signedOffAt && t.stages[t.stages.length - 1]?.status !== 'completed';
+
+    const interval = setInterval(() => {
+      if (trackersRef.current.some(isTrackerActive)) {
+        loadTrackers();
+        loadReferrals();
+      }
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [id]);
+
   const loadPatientData = async () => {
     if (!id) return;
 
