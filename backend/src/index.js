@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
 import bodyParser from 'body-parser';
+import axios from 'axios';
 
 // Import configurations
 import { testConnection } from './config/database.js';
@@ -80,7 +81,6 @@ app.get('/health', (req, res) => {
 // YOXA verification endpoint
 app.post('/api/yoxa-verify', async (req, res) => {
   try {
-    const axios = (await import('axios')).default;
     const challenge = req.headers['x-yoxa-verification-challenge'];
     const deploymentId = req.body.deploymentId || process.env.YOXA_DEPLOYMENT_ID;
     const secret = process.env.YOXA_DEPLOYMENT_SECRET;
