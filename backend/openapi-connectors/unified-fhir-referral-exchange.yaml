@@ -68,6 +68,15 @@ paths:
                     type: string
                   referral_id:
                     type: string
+                  patient_id:
+                    type: string
+                    description: Patient identifier, echoed back for downstream stages to reference
+                  patient_name:
+                    type: string
+                    description: Patient full name, echoed back for downstream stages to reference
+                  patient_email:
+                    type: string
+                    description: Patient email address, echoed back for downstream stages to reference (e.g. the final patient delivery step)
                   fhir_bundle_id:
                     type: string
                   fhir_version:

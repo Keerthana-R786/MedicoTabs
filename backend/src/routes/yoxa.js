@@ -801,6 +801,26 @@ router.post('/unified-fhir-referral-exchange', async (req, res) => {
     const transactionId = `FHIR-${Date.now()}`;
     const bundleId = `bundle-${Math.random().toString(36).substring(7)}`;
 
+    // This is the only tool call in the whole workflow that ever receives a
+    // real patient_id — later stages (separate agents) have no other way to
+    // learn the patient's actual id/email, and were falling back to the
+    // patient's name from the trigger text (e.g. "recipient": "Keerthana R").
+    // Echoing the resolved id/name/email here lets downstream stages carry
+    // it forward through this run's tracked context instead of guessing.
+    let patientEmail;
+    let patientName;
+    if (patient_id) {
+      const { data: patient } = await supabase
+        .from('patients')
+        .select('first_name, last_name, email')
+        .eq('id', patient_id)
+        .maybeSingle();
+      if (patient) {
+        patientEmail = patient.email;
+        patientName = `${patient.first_name} ${patient.last_name}`;
+      }
+    }
+
     // Record routing evidence on the referral when addressable
     const { data: referral } = await findReferral(referral_id);
     if (referral) {
@@ -825,6 +845,9 @@ router.post('/unified-fhir-referral-exchange', async (req, res) => {
     res.json({
       transaction_id: transactionId,
       referral_id,
+      patient_id,
+      patient_name: patientName,
+      patient_email: patientEmail,
       fhir_bundle_id: bundleId,
       fhir_version: 'R4',
       status: 'completed',
