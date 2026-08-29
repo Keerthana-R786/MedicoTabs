@@ -64,19 +64,54 @@ paths:
                     type: boolean
                   selected_specialist:
                     # Nullable: the handler returns null when no specialist
-                    # in this specialty exists (alternatives[0] || null) —
-                    # declaring only "object" made that a schema mismatch.
+                    # in this specialty exists (alternatives[0] || null).
+                    # Yoxa rejects a loose additionalProperties:true object,
+                    # so this is fully typed instead — specialty/available
+                    # are only present when this falls back to an
+                    # alternatives[0] entry, not the preferredMatch branch.
                     type:
                       - object
                       - 'null'
-                    additionalProperties: true
+                    additionalProperties: false
+                    required:
+                      - specialist_id
+                      - specialist_name
+                      - organization
+                    properties:
+                      specialist_id:
+                        type: string
+                      specialist_name:
+                        type: string
+                      organization:
+                        type: string
+                      specialty:
+                        type: string
+                      available:
+                        type: boolean
                   alternatives_considered:
                     type: integer
                   alternatives:
                     type: array
                     items:
                       type: object
-                      additionalProperties: true
+                      additionalProperties: false
+                      required:
+                        - specialist_id
+                        - specialist_name
+                        - organization
+                        - specialty
+                        - available
+                      properties:
+                        specialist_id:
+                          type: string
+                        specialist_name:
+                          type: string
+                        organization:
+                          type: string
+                        specialty:
+                          type: string
+                        available:
+                          type: boolean
                   urgency:
                     type: string
                   checked_at:
