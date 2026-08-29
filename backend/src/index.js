@@ -50,7 +50,11 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // Deny without throwing — an Error here becomes an unhandled 500 on
+      // every request (including the CORS preflight) from a disallowed
+      // origin, instead of a clean CORS rejection the browser can report
+      // normally.
+      callback(null, false);
     }
   },
   credentials: true,
