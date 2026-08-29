@@ -63,7 +63,12 @@ paths:
                   reroute_required:
                     type: boolean
                   selected_specialist:
-                    type: object
+                    # Nullable: the handler returns null when no specialist
+                    # in this specialty exists (alternatives[0] || null) —
+                    # declaring only "object" made that a schema mismatch.
+                    type:
+                      - object
+                      - 'null'
                     additionalProperties: true
                   alternatives_considered:
                     type: integer

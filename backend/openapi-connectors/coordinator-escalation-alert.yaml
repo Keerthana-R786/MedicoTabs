@@ -33,10 +33,11 @@ paths:
                   description: Patient full name
                 urgency_level:
                   type: string
-                  description: Urgency level triggering escalation
-                  enum:
-                    - Emergency
-                    - Urgent
+                  # The handler never restricts this value, and escalations
+                  # can legitimately fire for a Routine referral (e.g. a
+                  # non-responsive doctor sign-off or failed EHR archival) —
+                  # restricting to Emergency/Urgent rejected valid requests.
+                  description: Urgency level of the referral being escalated
                 escalation_reason:
                   type: string
                   description: Reason for coordinator escalation

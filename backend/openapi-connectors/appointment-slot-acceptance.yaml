@@ -85,7 +85,12 @@ paths:
                   is_confirmed_appointment:
                     type: boolean
                   booking_confirmation:
-                    type: string
+                    # Nullable: the handler returns null here when the
+                    # patient declines the offered slot (no booking exists) —
+                    # declaring only "string" made that a schema mismatch.
+                    type:
+                      - string
+                      - 'null'
                   location:
                     type: string
                   contact_channel:
