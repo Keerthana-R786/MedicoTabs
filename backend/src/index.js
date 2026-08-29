@@ -77,6 +77,46 @@ app.get('/health', (req, res) => {
   });
 });
 
+// YOXA verification endpoint
+app.post('/api/yoxa-verify', async (req, res) => {
+  try {
+    const axios = (await import('axios')).default;
+    const challenge = req.headers['x-yoxa-verification-challenge'];
+    const deploymentId = req.body.deploymentId || process.env.YOXA_DEPLOYMENT_ID;
+    const secret = process.env.YOXA_DEPLOYMENT_SECRET;
+    
+    if (!challenge || !deploymentId || !secret) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters',
+        challenge: !!challenge,
+        deploymentId: !!deploymentId,
+        secret: !!secret
+      });
+    }
+    
+    const verifyUrl = `https://yoxa.ai/api/v1/public/workflow-deployments/${deploymentId}/verify`;
+    
+    const response = await axios.post(verifyUrl, {}, {
+      headers: {
+        'X-Yoxa-Verification-Challenge': challenge,
+        'X-Yoxa-Deployment-Secret': secret,
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'YOXA verification successful',
+      response: response.data 
+    });
+  } catch (error) {
+    console.error('YOXA verification error:', error.response?.data || error.message);
+    res.status(500).json({ 
+      error: 'Verification failed', 
+      details: error.response?.data || error.message 
+    });
+  }
+});
+
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/patients', patientsRouter);
