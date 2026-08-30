@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Calculate Urgency SLA
   version: 1.0.0
-  description: Determines the required response window based on the referral's urgency level and writes it into the Flight Tracker as a persistent SLA deadline for downstream steps to reference. Emergency: 30 min, Urgent: 4 h, Routine: 24 h.
+  description: "Determines the required response window based on the referral's urgency level and writes it into the Flight Tracker as a persistent SLA deadline for downstream steps to reference. Emergency: 30 min, Urgent: 4 h, Routine: 24 h."
 servers:
   - url: https://medicotabs.onrender.com
 paths:
@@ -26,7 +26,7 @@ paths:
                   description: Referral identifier
                 urgency_level:
                   type: string
-                  description: Urgency level — Emergency (30 min), Urgent (4 h), or Routine (24 h)
+                  description: "Urgency level - Emergency (30 min), Urgent (4 h), or Routine (24 h)"
                   enum:
                     - Emergency
                     - Urgent
@@ -61,7 +61,7 @@ paths:
                     type: string
                   sla_deadline:
                     type: string
-                    description: ISO 8601 timestamp for the SLA deadline — single source of truth for all downstream alert, escalation, and nudge timing
+                    description: "ISO 8601 timestamp for the SLA deadline, the single source of truth for all downstream alert, escalation, and nudge timing"
                   priority_score:
                     type: integer
                     description: Priority score (1-10, 10 being highest)
