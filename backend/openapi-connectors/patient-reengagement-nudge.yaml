@@ -40,7 +40,9 @@ paths:
                   type: string
                   description: Personalized reminder message
                 appointment_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Related appointment if applicable
                 delivery_method:
                   type: string
@@ -68,7 +70,9 @@ paths:
                   patient_id:
                     type: string
                   referral_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   status:
                     type: string
                   sent_at:

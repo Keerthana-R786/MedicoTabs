@@ -63,11 +63,17 @@ paths:
                   referral_id:
                     type: string
                   patient_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   specialist_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   specialist_name:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   status:
                     type: string
                   confirmation_number:

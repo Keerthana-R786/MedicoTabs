@@ -31,7 +31,9 @@ paths:
                   type: string
                   description: Preferred specialist name or facility
                 current_specialist_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Currently routed specialist identifier
                 urgency:
                   type: string

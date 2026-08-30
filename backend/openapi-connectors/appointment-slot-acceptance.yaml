@@ -31,10 +31,14 @@ paths:
                   type: string
                   description: Patient identifier
                 specialist_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Offering specialist identifier
                 specialist_name:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Offering specialist name
                 organization:
                   type: string
@@ -69,11 +73,17 @@ paths:
                   referral_id:
                     type: string
                   patient_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   specialist_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   specialist_name:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   slot_date:
                     type: string
                   slot_time:

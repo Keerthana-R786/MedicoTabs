@@ -44,7 +44,9 @@ paths:
                   patient_id:
                     type: string
                   referral_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   first_name:
                     type: string
                   last_name:
@@ -62,7 +64,9 @@ paths:
                   insurance_provider:
                     type: string
                   insurance_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   medical_history:
                     type: string
                   allergies:

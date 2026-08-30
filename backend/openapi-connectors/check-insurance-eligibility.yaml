@@ -54,7 +54,9 @@ paths:
                   referral_id:
                     type: string
                   patient_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   is_eligible:
                     type: boolean
                   coverage_status:

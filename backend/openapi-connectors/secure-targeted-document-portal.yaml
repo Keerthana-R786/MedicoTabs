@@ -26,7 +26,9 @@ paths:
                   type: string
                   description: Associated referral identifier
                 patient_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Patient identifier
                 document_ids:
                   type: array
@@ -37,7 +39,9 @@ paths:
                   type: string
                   description: Receiving provider identifier
                 sender_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Sending provider identifier
                 access_expiration:
                   type: string

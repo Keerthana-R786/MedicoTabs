@@ -28,7 +28,9 @@ paths:
                   type: string
                   description: Patient identifier
                 patient_name:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Patient full name
                 document_title:
                   type: string
@@ -68,13 +70,21 @@ paths:
                   referral_number:
                     type: string
                   patient_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   document_reference_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   fhir_resource_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   file_name:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   output_type:
                     type: string
                   content_length:

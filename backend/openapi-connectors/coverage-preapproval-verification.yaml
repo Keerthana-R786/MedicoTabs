@@ -49,11 +49,15 @@ paths:
                   referral_id:
                     type: string
                   patient_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   insurance_provider:
                     type: string
                   member_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   routine_visit_exempt:
                     type: boolean
                   is_eligible:

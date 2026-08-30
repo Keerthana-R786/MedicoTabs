@@ -63,7 +63,9 @@ paths:
                   letter_content:
                     type: string
                   document_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   generated_at:
                     type: string
                   letter_format:

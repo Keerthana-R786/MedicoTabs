@@ -78,9 +78,13 @@ paths:
                   patient_id:
                     type: string
                   referral_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   document_reference_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   status:
                     type: string
                   saved_at:
@@ -88,7 +92,9 @@ paths:
                   ehr_location:
                     type: string
                   fhir_resource_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   indexed:
                     type: boolean
 

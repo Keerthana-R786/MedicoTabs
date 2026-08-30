@@ -29,10 +29,14 @@ paths:
                   type: string
                   description: Associated referral identifier
                 patient_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Patient identifier
                 specialist_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Specialist identifier
                 attendance_status:
                   type: string
@@ -73,7 +77,9 @@ paths:
                   appointment_id:
                     type: string
                   referral_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   attendance_status:
                     type: string
                   consultation_completed:

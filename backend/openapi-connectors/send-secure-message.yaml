@@ -60,9 +60,13 @@ paths:
                   referral_id:
                     type: string
                   sender_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   recipient_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   status:
                     type: string
                   sent_at:

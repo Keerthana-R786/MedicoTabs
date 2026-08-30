@@ -60,7 +60,9 @@ paths:
                   requested_specialty:
                     type: string
                   primary_doctor_name:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   primary_organization:
                     type: string
 

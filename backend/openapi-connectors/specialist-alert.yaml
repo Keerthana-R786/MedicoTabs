@@ -30,13 +30,17 @@ paths:
                   type: string
                   description: Target specialist identifier
                 specialist_name:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Specialist full name
                 patient_name:
                   type: string
                   description: Patient full name
                 patient_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Patient identifier
                 urgency_level:
                   type: string

@@ -26,10 +26,14 @@ paths:
                   type: string
                   description: Referral identifier
                 patient_id:
-                  type: string
+                  type:
+                    - string
+                    - "null"
                   description: Patient identifier
                 patient_name:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Patient full name
                 urgency_level:
                   type: string
@@ -48,7 +52,9 @@ paths:
                   type: string
                   description: SLA deadline timestamp
                 coordinator_id:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Assigned care coordinator ID
       responses:
         '200':
@@ -69,7 +75,9 @@ paths:
                   referral_id:
                     type: string
                   coordinator_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   coordinator_notified:
                     type: boolean
                   status:

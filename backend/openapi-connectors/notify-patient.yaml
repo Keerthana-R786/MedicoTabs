@@ -68,7 +68,9 @@ paths:
                   patient_id:
                     type: string
                   referral_id:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   status:
                     type: string
                   delivery_method:
