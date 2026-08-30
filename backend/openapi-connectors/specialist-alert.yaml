@@ -2,14 +2,14 @@ openapi: 3.1.0
 info:
   title: Specialist Alert
   version: 1.0.0
-  description: Send notification alert to specialist about new referral requiring review
+  description: Sends the distinct specialist intake alert or one permitted automatic re-alert with the referral urgency and acknowledgment deadline
 servers:
   - url: https://medicotabs.onrender.com
 paths:
   /api/yoxa/specialist-alert:
     post:
       operationId: specialistAlert
-      summary: Notify specialist of incoming referral
+      summary: Send specialist intake alert with urgency and acknowledgment deadline
       requestBody:
         required: true
         content:
@@ -28,7 +28,7 @@ paths:
                   description: Referral identifier
                 specialist_id:
                   type: string
-                  description: Target specialist identifier
+                  description: Specialist identifier
                 specialist_name:
                   type:
                     - string
@@ -49,20 +49,20 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: Type of specialty consultation
+                  description: Requested specialty type
                 referral_reason:
                   type:
                     - string
                     - 'null'
-                  description: Brief reason for referral
+                  description: Referral reason or diagnosis
                 acknowledgment_deadline:
                   type:
                     - string
                     - 'null'
-                  description: Deadline for specialist to acknowledge
+                  description: Acknowledgment deadline from the Urgency SLA Calculator
       responses:
         '200':
-          description: Specialist alert sent successfully
+          description: Specialist intake alert delivered to intake queue and specialist
           content:
             application/json:
               schema:

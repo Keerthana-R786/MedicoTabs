@@ -2,14 +2,14 @@ openapi: 3.1.0
 info:
   title: Unified FHIR Referral Exchange
   version: 1.0.0
-  description: Create and exchange FHIR-compliant referral transaction between healthcare systems
+  description: Creates, routes, and retrieves confirmed referral and acknowledgment data for in-network and external specialist pathways through one FHIR-based process
 servers:
   - url: https://medicotabs.onrender.com
 paths:
   /api/yoxa/unified-fhir-referral-exchange:
     post:
       operationId: unifiedFhirReferralExchange
-      summary: Create FHIR referral transaction bundle
+      summary: Create, route, and confirm referral through the unified FHIR exchange
       requestBody:
         required: true
         content:
@@ -25,36 +25,36 @@ paths:
               properties:
                 referral_id:
                   type: string
-                  description: Internal referral identifier
+                  description: Referral identifier
                 patient_id:
                   type: string
                   description: Patient identifier
                 requesting_provider:
                   type: string
-                  description: Referring provider NPI or ID
+                  description: Referring provider identifier
                 requesting_organization:
                   type:
                     - string
                     - 'null'
-                  description: Referring organization
+                  description: Referring organization name
                 receiving_provider:
                   type: string
-                  description: Specialist provider NPI or ID
+                  description: Specialist provider identifier
                 receiving_organization:
                   type:
                     - string
                     - 'null'
-                  description: Receiving organization
+                  description: Receiving organization name
                 clinical_summary:
                   type:
                     - string
                     - 'null'
-                  description: Clinical information
+                  description: Clinical summary for the referral
                 urgency:
                   type:
                     - string
                     - 'null'
-                  description: Urgency level
+                  description: Urgency level (Emergency, Urgent, or Routine)
                 specialty:
                   type:
                     - string

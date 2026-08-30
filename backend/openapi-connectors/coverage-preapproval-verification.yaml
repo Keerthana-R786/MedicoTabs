@@ -9,7 +9,7 @@ paths:
   /api/yoxa/coverage-preapproval-verification:
     post:
       operationId: coveragePreapprovalVerification
-      summary: Verify eligibility and pre-approval requirements for the referred service
+      summary: Apply routine-visit exemption or verify eligibility, pre-approval, and co-pay
       requestBody:
         required: true
         content:
@@ -39,7 +39,7 @@ paths:
                   description: Requested specialty
       responses:
         '200':
-          description: Coverage verification completed
+          description: Coverage verification completed with eligibility, pre-approval, and co-pay details
           content:
             application/json:
               schema:

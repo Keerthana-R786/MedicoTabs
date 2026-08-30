@@ -2,14 +2,14 @@ openapi: 3.1.0
 info:
   title: Secure Targeted Document Portal
   version: 1.0.0
-  description: Securely share and exchange clinical documents between providers through protected portal
+  description: Opens a secure consultation-specific portal for requesting, selecting, uploading, and confirming only the records needed for the referral
 servers:
   - url: https://medicotabs.onrender.com
 paths:
   /api/yoxa/secure-targeted-document-portal:
     post:
       operationId: secureTargetedDocumentPortal
-      summary: Share documents through secure portal
+      summary: Open consultation-specific portal for targeted document exchange
       requestBody:
         required: true
         content:
@@ -53,7 +53,7 @@ paths:
                   description: Whether recipient must acknowledge receipt
       responses:
         '200':
-          description: Documents shared successfully through secure portal
+          description: Secure consultation-specific portal opened with targeted document packet
           content:
             application/json:
               schema:

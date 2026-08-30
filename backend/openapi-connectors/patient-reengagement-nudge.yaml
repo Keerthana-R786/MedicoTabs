@@ -2,14 +2,14 @@ openapi: 3.1.0
 info:
   title: Patient Re-engagement Nudge
   version: 1.0.0
-  description: Send reminder or follow-up notification to patient for missed appointment or required action
+  description: Sends a distinct urgency-adjusted SMS, email, or call prompt to help a patient re-engage or reschedule after a missed or unconfirmed visit
 servers:
   - url: https://medicotabs.onrender.com
 paths:
   /api/yoxa/patient-reengagement-nudge:
     post:
       operationId: patientReengagementNudge
-      summary: Send patient re-engagement reminder
+      summary: Send urgency-adjusted re-engagement prompt after missed or unconfirmed visit
       requestBody:
         required: true
         content:
@@ -58,7 +58,7 @@ paths:
                     - portal
       responses:
         '200':
-          description: Re-engagement nudge sent successfully
+          description: Urgency-adjusted re-engagement nudge delivered to patient
           content:
             application/json:
               schema:

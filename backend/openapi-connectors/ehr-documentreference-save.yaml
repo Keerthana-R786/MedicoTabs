@@ -2,14 +2,14 @@ openapi: 3.1.0
 info:
   title: EHR DocumentReference Save
   version: 1.0.0
-  description: Save referral summary document to patient EHR as permanent medical record
+  description: Saves the generated PDF as a FHIR DocumentReference attachment in the patient's existing EHR record folder and returns persistence evidence
 servers:
   - url: https://medicotabs.onrender.com
 paths:
   /api/yoxa/ehr-documentreference-save:
     post:
       operationId: ehrDocumentreferenceSave
-      summary: Save workflow summary document to EHR
+      summary: Save PDF as FHIR DocumentReference attachment to patient EHR
       requestBody:
         required: true
         content:
@@ -31,7 +31,7 @@ paths:
                   description: Referral identifier
                 document_content:
                   type: string
-                  description: Complete document content or summary
+                  description: Complete document content to persist in the EHR
                 document_type:
                   type: string
                   description: Type of document
@@ -71,7 +71,7 @@ paths:
                     - very_restricted
       responses:
         '200':
-          description: Document saved to EHR successfully
+          description: FHIR DocumentReference saved to patient EHR with persistence evidence
           content:
             application/json:
               schema:

@@ -9,7 +9,7 @@ paths:
   /api/yoxa/specialist-routing-availability:
     post:
       operationId: specialistRoutingAvailability
-      summary: Check same-specialty routing options and reroute eligibility
+      summary: Check same-specialty routing options and reroute unacknowledged referral
       requestBody:
         required: true
         content:
@@ -49,7 +49,7 @@ paths:
                   description: Routing check context, e.g. initial_routing or post_realert
       responses:
         '200':
-          description: Routing availability determined
+          description: Same-specialty routing options and reroute determination
           content:
             application/json:
               schema:

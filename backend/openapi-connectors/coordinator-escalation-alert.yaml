@@ -2,14 +2,14 @@ openapi: 3.1.0
 info:
   title: Coordinator Escalation Alert
   version: 1.0.0
-  description: Send escalation alert to care coordinator for high-priority referrals requiring immediate attention
+  description: Sends a distinct actionable notification to a human care coordinator when a referral is denied, unresolved, unacknowledged after the permitted re-alert, or has no alternate provider
 servers:
   - url: https://medicotabs.onrender.com
 paths:
   /api/yoxa/coordinator-escalation-alert:
     post:
       operationId: coordinatorEscalationAlert
-      summary: Alert care coordinator for urgent referral escalation
+      summary: Notify care coordinator of denied, unresolved, or unacknowledged referral
       requestBody:
         required: true
         content:
@@ -44,7 +44,7 @@ paths:
                   description: Urgency level of the referral being escalated
                 escalation_reason:
                   type: string
-                  description: Reason for coordinator escalation
+                  description: Escalation reason (denied, unresolved, unacknowledged, or no alternate provider)
                 specialty_required:
                   type:
                     - string

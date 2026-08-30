@@ -2,14 +2,14 @@ openapi: 3.1.0
 info:
   title: Specialist Attendance Record
   version: 1.0.0
-  description: Record and confirm specialist attendance or completion of consultation
+  description: Retrieves the specialist's own attendance record after the appointment time to confirm attended, missed, or unavailable evidence
 servers:
   - url: https://medicotabs.onrender.com
 paths:
   /api/yoxa/specialist-attendance-record:
     post:
       operationId: specialistAttendanceRecord
-      summary: Record specialist consultation attendance
+      summary: Retrieve specialist attendance record to confirm visit outcome
       requestBody:
         required: true
         content:
@@ -40,7 +40,7 @@ paths:
                   description: Specialist identifier
                 attendance_status:
                   type: string
-                  description: Attendance status
+                  description: Attendance status from specialist record
                   enum:
                     - attended
                     - no_show
@@ -64,7 +64,7 @@ paths:
                   description: Timestamp of attendance
       responses:
         '200':
-          description: Attendance record created successfully
+          description: Specialist attendance record retrieved with visit outcome evidence
           content:
             application/json:
               schema:
