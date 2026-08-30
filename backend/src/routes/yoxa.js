@@ -987,6 +987,14 @@ router.post('/ehr-documentreference-save', async (req, res) => {
       confidentiality,
     } = req.body;
 
+    // The agent has repeatedly sent the patient's NAME (e.g. "Keerthana R")
+    // in patient_id instead of their real UUID — schema-valid (it's still a
+    // string) but useless for storage. referral_id has been reliable across
+    // every run, so cross-check against the referral's own patient_id
+    // rather than trusting the agent's patient_id blindly.
+    const { data: referral } = referral_id ? await findReferral(referral_id) : { data: null };
+    const resolvedPatientId = asUuid(patient_id) || referral?.patient_id || null;
+
     const documentId = `DOC-${Date.now()}`;
     const docRefId = `DocRef-${Date.now()}`;
     const fileName = document_title || `${document_type || 'document'}_${referral_id}.pdf`;
@@ -1002,14 +1010,14 @@ router.post('/ehr-documentreference-save', async (req, res) => {
 
     let storagePath = null;
     try {
-      storagePath = await storeGeneratedPdf(patient_id, fileName, pdfBuffer);
+      storagePath = await storeGeneratedPdf(resolvedPatientId, fileName, pdfBuffer);
     } catch (storageError) {
       console.warn('⚠ Document storage upload skipped:', storageError.message);
     }
 
     if (storagePath) {
       const { error: dbError } = await supabase.from('patient_documents').insert({
-        patient_id: asUuid(patient_id),
+        patient_id: resolvedPatientId,
         file_name: fileName,
         file_type: 'application/pdf',
         file_url: storagePath,
@@ -1020,16 +1028,13 @@ router.post('/ehr-documentreference-save', async (req, res) => {
       if (dbError) console.warn('⚠ Document insert skipped:', dbError.message);
     }
 
-    if (referral_id) {
-      const { data: referral } = await findReferral(referral_id);
-      if (referral) {
-        await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
-          agentAction: buildAgentAction('ehr_documentreference_save', {
-            description: `${document_type || 'Document'} saved to EHR`,
-            result: fileName,
-          }),
-        });
-      }
+    if (referral) {
+      await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
+        agentAction: buildAgentAction('ehr_documentreference_save', {
+          description: `${document_type || 'Document'} saved to EHR`,
+          result: fileName,
+        }),
+      });
     }
 
     // Matches the response schema in
@@ -1038,16 +1043,18 @@ router.post('/ehr-documentreference-save', async (req, res) => {
     // aren't declared there, so including them made YOXA reject this as
     // connector_response_schema_mismatch and drop the resulting document off
     // the workflow's tracked context, stalling everything after this step.
+    // patient_id echoes the resolved UUID, not whatever the agent sent, so
+    // downstream stages that read this response get a usable identifier.
     res.json({
       document_id: documentId,
-      patient_id,
+      patient_id: resolvedPatientId || patient_id,
       referral_id,
       document_reference_id: docRefId,
-      status: 'saved',
+      status: storagePath ? 'saved' : 'failed',
       saved_at: new Date().toISOString(),
-      ehr_location: `/ehr/patients/${patient_id}/documents/${documentId}`,
+      ehr_location: `/ehr/patients/${resolvedPatientId || patient_id}/documents/${documentId}`,
       fhir_resource_id: `DocumentReference/${docRefId}`,
-      indexed: true,
+      indexed: Boolean(storagePath),
     });
   } catch (error) {
     console.error('EHR document save error:', error);
@@ -1407,6 +1414,9 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
 
     const { data: referral } = await findReferral(referral_id);
     const referralNumber = referral?.referral_number || referral_id;
+    // Same fallback as ehr-documentreference-save: don't trust a
+    // non-UUID patient_id (the agent sometimes sends the patient's name).
+    const resolvedPatientId = asUuid(patient_id) || referral?.patient_id || null;
 
     const fileName = document_title || `referral_summary_${referralNumber}.pdf`;
     const documentId = `DOC-SUMMARY-${Date.now()}`;
@@ -1428,14 +1438,14 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
 
     let storagePath = null;
     try {
-      storagePath = await storeGeneratedPdf(patient_id, fileName, pdfBuffer);
+      storagePath = await storeGeneratedPdf(resolvedPatientId, fileName, pdfBuffer);
     } catch (storageError) {
       console.warn('⚠ Summary storage upload skipped:', storageError.message);
     }
 
     if (storagePath) {
       const { error: dbError } = await supabase.from('patient_documents').insert({
-        patient_id: asUuid(patient_id),
+        patient_id: resolvedPatientId,
         file_name: fileName,
         file_type: 'application/pdf',
         file_url: storagePath,
@@ -1467,15 +1477,15 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
       document_id: documentId,
       referral_id,
       referral_number: referralNumber,
-      patient_id,
+      patient_id: resolvedPatientId || patient_id,
       document_reference_id: docRefId,
       fhir_resource_id: `DocumentReference/${docRefId}`,
       file_name: fileName,
       output_type: 'pdf',
       content_length: pdfBuffer.length,
-      status: 'generated',
+      status: storagePath ? 'generated' : 'generation_failed',
       generated_at: new Date().toISOString(),
-      eligible_for_attachment: true,
+      eligible_for_attachment: Boolean(storagePath),
     });
   } catch (error) {
     console.error('Consolidated referral summary PDF error:', error);
