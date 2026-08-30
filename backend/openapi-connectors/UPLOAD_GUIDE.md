@@ -1,45 +1,58 @@
 # Quick Upload Guide for YOXA
 
-## 🎯 Quick Start (5 Minutes)
+## Quick Start
 
 ### 1. Open YOXA Platform
 Go to: **Release → API Configuration**
 
-### 2. Upload All 11 Files
+### 2. Upload All 12 Files
 
 Click **"Upload Connector"** and upload each file in this order:
 
 ```
-✅ 1. get-patient-data.yaml
-✅ 2. get-clinical-summary.yaml
-✅ 3. generate-referral-letter.yaml
-✅ 4. check-insurance-eligibility.yaml
-✅ 5. get-specialist-availability.yaml
-✅ 6. book-appointment.yaml
-✅ 7. send-secure-message.yaml
-✅ 8. get-treatment-guidelines.yaml
-✅ 9. update-patient-record.yaml
-✅ 10. generate-prior-auth.yaml
-✅ 11. notify-patient.yaml
+Stage 1 — Create and Route the Referral:
+  1. unified-fhir-referral-exchange.yaml
+  2. specialist-alert.yaml
+  3. specialist-routing-availability.yaml
+  4. coordinator-escalation-alert.yaml
+  5. calculate-urgency-sla.yaml
+
+Stage 2 — Confirm Acceptance and Exchange Documents:
+  6. secure-targeted-document-portal.yaml
+
+Stage 3 — Verify Applicable Coverage:
+  7. coverage-preapproval-verification.yaml
+
+Stage 4 — Schedule and Verify Attendance:
+  8. appointment-slot-acceptance.yaml
+  9. specialist-attendance-record.yaml
+  10. patient-reengagement-nudge.yaml
+
+Stage 5 — Approve Completion, Archive, and Deliver:
+  11. consolidated-referral-summary-pdf.yaml
+  12. ehr-documentreference-save.yaml
 ```
 
 ### 3. Map to Workflow Tools
 
 After each upload, YOXA will ask you to map the connector to a simulated tool in your workflow. Match them like this:
 
-| YAML File | Map To Workflow Tool |
-|-----------|---------------------|
-| `get-patient-data.yaml` | Get Patient Data |
-| `get-clinical-summary.yaml` | Get Clinical Summary |
-| `generate-referral-letter.yaml` | Generate Referral Letter |
-| `check-insurance-eligibility.yaml` | Check Insurance Eligibility |
-| `get-specialist-availability.yaml` | Get Specialist Availability |
-| `book-appointment.yaml` | Book Appointment |
-| `send-secure-message.yaml` | Send Secure Message |
-| `get-treatment-guidelines.yaml` | Get Treatment Guidelines |
-| `update-patient-record.yaml` | Update Patient Record |
-| `generate-prior-auth.yaml` | Generate Prior Auth |
-| `notify-patient.yaml` | Notify Patient |
+| YAML File | Workflow Tool |
+|-----------|---------------|
+| `unified-fhir-referral-exchange.yaml` | `unified_fhir_referral_exchange` |
+| `specialist-alert.yaml` | `specialist_alert` |
+| `specialist-routing-availability.yaml` | `specialist_routing_availability` |
+| `coordinator-escalation-alert.yaml` | `coordinator_escalation_alert` |
+| `calculate-urgency-sla.yaml` | `tool_24_call` |
+| `secure-targeted-document-portal.yaml` | `secure_targeted_document_portal` |
+| `coverage-preapproval-verification.yaml` | `coverage_preapproval_verification` |
+| `appointment-slot-acceptance.yaml` | `appointment_slot_acceptance` |
+| `specialist-attendance-record.yaml` | `specialist_attendance_record` |
+| `patient-reengagement-nudge.yaml` | `patient_reengagement_nudge` |
+| `consolidated-referral-summary-pdf.yaml` | `consolidated_referral_summary_pdf` |
+| `ehr-documentreference-save.yaml` | `ehr_documentreference_save` |
+
+> **Note:** The workflow's 13th tool, `doctor_completion_signoff_approval`, is a Human-in-the-Loop approval gate — configure it under **Release → Integration → Human Approvals**, not as an API connector.
 
 ### 4. Configure Authentication
 
@@ -60,26 +73,22 @@ For each connector:
 
 ---
 
-## ⚠️ Common Issues
+## Common Issues
 
-### ❌ "Server URL contains path"
+### "Server URL contains path"
 **Error**: `servers[0].url` has a path prefix
 
 **Fix**: Server URL should be `https://medicotabs.onrender.com` only, no `/api/` prefix
 
----
-
-### ❌ "Connection timeout"
+### "Connection timeout"
 **Problem**: YOXA can't reach backend
 
-**Fix**: 
+**Fix**:
 - Verify backend is running: https://medicotabs.onrender.com/health
 - Check if Render service is awake (cold start delay)
 - Wait 30 seconds and retry
 
----
-
-### ❌ "Authentication failed"
+### "Authentication failed"
 **Problem**: Bearer token is invalid
 
 **Fix**:
@@ -89,24 +98,25 @@ For each connector:
 
 ---
 
-## ✅ Success Checklist
+## Success Checklist
 
 Before activating workflow:
 
-- [ ] All 11 connectors uploaded
-- [ ] All connectors mapped to tools
+- [ ] All 12 connectors uploaded
+- [ ] All connectors mapped to correct workflow tools
 - [ ] All authentication configured
 - [ ] All connection tests passing
+- [ ] HITL approval gate configured for doctor sign-off
 - [ ] Backend endpoints implemented
 - [ ] HITL webhook configured
 
 ---
 
-## 🔗 Backend Status
+## Backend Status
 
 **Deployed URL**: https://medicotabs.onrender.com
 
-**Health Check**: 
+**Health Check**:
 ```bash
 curl https://medicotabs.onrender.com/health
 ```
@@ -122,7 +132,7 @@ Expected response:
 
 ---
 
-## 📞 Need Help?
+## Need Help?
 
 - Check `README.md` in this directory for detailed docs
 - Review `../YOXA_INTEGRATION_GUIDE.md` for backend setup

@@ -51,48 +51,46 @@ You need to create OpenAPI YAML files for each simulated tool in the workflow. T
 
 Based on the workflow context document, create these files in `backend/openapi-connectors/`:
 
-### 1. Referral Creation & Routing Stage
+### Stage 1: Create and Route the Referral
 
-#### `unified-fhir-referral-exchange.openapi.yml`
-Maps to: Backend endpoint that handles FHIR referral creation
+| File | Workflow Tool | Backend Route |
+|------|---------------|---------------|
+| `unified-fhir-referral-exchange.yaml` | `unified_fhir_referral_exchange` | `POST /api/yoxa/unified-fhir-referral-exchange` |
+| `specialist-alert.yaml` | `specialist_alert` | `POST /api/yoxa/specialist-alert` |
+| `specialist-routing-availability.yaml` | `specialist_routing_availability` | `POST /api/yoxa/specialist-routing-availability` |
+| `coordinator-escalation-alert.yaml` | `coordinator_escalation_alert` | `POST /api/yoxa/coordinator-escalation-alert` |
+| `calculate-urgency-sla.yaml` | `tool_24_call` | `POST /api/yoxa/calculate-urgency-sla` |
 
-#### `specialist-alert.openapi.yml`
-Maps to: Backend endpoint that sends specialist alerts
+### Stage 2: Confirm Acceptance and Exchange Documents
 
-#### `specialist-routing-availability.openapi.yml`
-Maps to: Backend endpoint that checks specialist availability
+| File | Workflow Tool | Backend Route |
+|------|---------------|---------------|
+| `secure-targeted-document-portal.yaml` | `secure_targeted_document_portal` | `POST /api/yoxa/secure-targeted-document-portal` |
 
-#### `coordinator-escalation-alert.openapi.yml`
-Maps to: Backend endpoint that sends coordinator notifications
+> Note: `unified_fhir_referral_exchange`, `specialist_alert`, `specialist_routing_availability`, and `coordinator_escalation_alert` are reused in this stage.
 
-#### `urgency-sla-calculator.openapi.yml`
-Maps to: Backend endpoint that calculates SLA deadlines
+### Stage 3: Verify Applicable Coverage
 
-### 2. Acceptance & Records Stage
+| File | Workflow Tool | Backend Route |
+|------|---------------|---------------|
+| `coverage-preapproval-verification.yaml` | `coverage_preapproval_verification` | `POST /api/yoxa/coverage-preapproval-verification` |
 
-#### `secure-targeted-document-portal.openapi.yml`
-Maps to: Backend endpoint for document exchange
+### Stage 4: Schedule and Verify Attendance
 
-### 3. Coverage Verification Stage
+| File | Workflow Tool | Backend Route |
+|------|---------------|---------------|
+| `appointment-slot-acceptance.yaml` | `appointment_slot_acceptance` | `POST /api/yoxa/appointment-slot-acceptance` |
+| `specialist-attendance-record.yaml` | `specialist_attendance_record` | `POST /api/yoxa/specialist-attendance-record` |
+| `patient-reengagement-nudge.yaml` | `patient_reengagement_nudge` | `POST /api/yoxa/patient-reengagement-nudge` |
 
-#### `coverage-preapproval-verification.openapi.yml`
-Maps to: Backend endpoint for insurance verification
+### Stage 5: Approve Completion, Archive, and Deliver
 
-### 4. Scheduling & Attendance Stage
+| File | Workflow Tool | Backend Route |
+|------|---------------|---------------|
+| `consolidated-referral-summary-pdf.yaml` | `consolidated_referral_summary_pdf` | `POST /api/yoxa/consolidated-referral-summary-pdf` |
+| `ehr-documentreference-save.yaml` | `ehr_documentreference_save` | `POST /api/yoxa/ehr-documentreference-save` |
 
-#### `appointment-slot-acceptance.openapi.yml`
-Maps to: Backend endpoint for appointment booking
-
-#### `specialist-attendance-record.openapi.yml`
-Maps to: Backend endpoint for attendance confirmation
-
-#### `patient-reengagement-nudge.openapi.yml`
-Maps to: Backend endpoint for patient reminders
-
-### 5. Completion & Archive Stage
-
-#### `ehr-documentreference-save.openapi.yml`
-Maps to: Backend endpoint for PDF storage
+> Note: `doctor_completion_signoff_approval` is a Human-in-the-Loop approval gate, not an API connector. Configure it under Release → Integration → Human Approvals.
 
 ## OpenAPI File Template
 
@@ -218,23 +216,25 @@ components:
 
 ## Workflow-to-Backend Mapping
 
-Here's how each workflow tool should map to backend endpoints:
+Here's how each workflow tool maps to backend endpoints:
 
 | Workflow Tool | Backend Endpoint | What It Does |
 |---|---|---|
-| `unified_fhir_referral_exchange` | `POST /api/fhir/referrals` | Creates FHIR referral transaction |
-| `specialist_alert` | `POST /api/specialists/alert` | Sends specialist notification |
-| `specialist_routing_availability` | `GET /api/specialists/routing?specialty=X` | Checks available specialists |
-| `coordinator_escalation_alert` | `POST /api/coordinators/alert` | Notifies care coordinator |
-| `urgency_sla_calculator` | `POST /api/referrals/:id/sla` | Calculates SLA deadline |
-| `secure_targeted_document_portal` | `POST /api/documents/exchange` | Exchanges documents |
-| `coverage_preapproval_verification` | `POST /api/coverage/verify` | Verifies insurance |
-| `appointment_slot_acceptance` | `POST /api/appointments` | Books appointment |
-| `specialist_attendance_record` | `GET /api/appointments/:id/attendance` | Checks attendance |
-| `patient_reengagement_nudge` | `POST /api/patients/nudge` | Sends patient reminder |
-| `ehr_documentreference_save` | `POST /api/documents/save` | Saves PDF to EHR |
+| `unified_fhir_referral_exchange` | `POST /api/yoxa/unified-fhir-referral-exchange` | Creates and routes FHIR referral transaction |
+| `specialist_alert` | `POST /api/yoxa/specialist-alert` | Sends specialist intake alert with urgency and deadline |
+| `specialist_routing_availability` | `POST /api/yoxa/specialist-routing-availability` | Checks same-specialty routing and reroute eligibility |
+| `coordinator_escalation_alert` | `POST /api/yoxa/coordinator-escalation-alert` | Notifies care coordinator of escalations |
+| `tool_24_call` (Urgency SLA Calculator) | `POST /api/yoxa/calculate-urgency-sla` | Calculates SLA deadline (Emergency 30 min / Urgent 4 h / Routine 24 h) |
+| `secure_targeted_document_portal` | `POST /api/yoxa/secure-targeted-document-portal` | Opens secure portal for targeted document exchange |
+| `coverage_preapproval_verification` | `POST /api/yoxa/coverage-preapproval-verification` | Verifies insurance eligibility and pre-approval |
+| `appointment_slot_acceptance` | `POST /api/yoxa/appointment-slot-acceptance` | Records offered slot and patient acceptance |
+| `specialist_attendance_record` | `POST /api/yoxa/specialist-attendance-record` | Retrieves specialist attendance record |
+| `patient_reengagement_nudge` | `POST /api/yoxa/patient-reengagement-nudge` | Sends urgency-adjusted re-engagement prompt |
+| `consolidated_referral_summary_pdf` | `POST /api/yoxa/consolidated-referral-summary-pdf` | Generates standardized referral journey PDF |
+| `ehr_documentreference_save` | `POST /api/yoxa/ehr-documentreference-save` | Saves PDF as FHIR DocumentReference in patient EHR |
+| `doctor_completion_signoff_approval` | HITL webhook (not an API connector) | Human approval gate — doctor signs off completion |
 
-**Note**: You'll need to implement these backend endpoints to match the OpenAPI specs!
+**Note**: All 12 API endpoints are already implemented in `backend/src/routes/yoxa.js`.
 
 ## Step 4: Upload Connectors to YOXA
 

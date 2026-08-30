@@ -1,38 +1,29 @@
 # YOXA OpenAPI Connector Files
 
-This directory contains 23 OpenAPI 3.1.0 connector files for YOXA multiagent workflow integration — one per tool endpoint in `backend/src/routes/yoxa.js`.
+This directory contains 12 OpenAPI 3.1.0 connector files for the MedicoTabs Referral Lifecycle workflow — one per simulated API tool endpoint.
 
-## 📋 Connector Files Overview
+The workflow's 13th tool, `doctor_completion_signoff_approval`, is a Human-in-the-Loop (HITL) approval gate configured through YOXA's HITL integration, not an API connector.
 
-| # | File Name | Backend Route |
-|---|-----------|----------------|
-| 1 | `calculate-urgency-sla.yaml` | `POST /api/yoxa/calculate-urgency-sla` |
-| 2 | `get-patient-data.yaml` | `POST /api/yoxa/get-patient-data` |
-| 3 | `get-clinical-summary.yaml` | `POST /api/yoxa/get-clinical-summary` |
-| 4 | `generate-referral-letter.yaml` | `POST /api/yoxa/generate-referral-letter` |
-| 5 | `check-insurance-eligibility.yaml` | `POST /api/yoxa/check-insurance-eligibility` |
-| 6 | `get-specialist-availability.yaml` | `POST /api/yoxa/get-specialist-availability` |
-| 7 | `book-appointment.yaml` | `POST /api/yoxa/book-appointment` |
-| 8 | `send-secure-message.yaml` | `POST /api/yoxa/send-secure-message` |
-| 9 | `get-treatment-guidelines.yaml` | `POST /api/yoxa/get-treatment-guidelines` |
-| 10 | `update-patient-record.yaml` | `POST /api/yoxa/update-patient-record` |
-| 11 | `generate-prior-auth.yaml` | `POST /api/yoxa/generate-prior-auth` |
-| 12 | `coordinator-escalation-alert.yaml` | `POST /api/yoxa/coordinator-escalation-alert` |
-| 13 | `notify-patient.yaml` | `POST /api/yoxa/notify-patient` |
-| 14 | `patient-reengagement-nudge.yaml` | `POST /api/yoxa/patient-reengagement-nudge` |
-| 15 | `unified-fhir-referral-exchange.yaml` | `POST /api/yoxa/unified-fhir-referral-exchange` |
-| 16 | `secure-targeted-document-portal.yaml` | `POST /api/yoxa/secure-targeted-document-portal` |
-| 17 | `specialist-alert.yaml` | `POST /api/yoxa/specialist-alert` |
-| 18 | `ehr-documentreference-save.yaml` | `POST /api/yoxa/ehr-documentreference-save` |
-| 19 | `specialist-attendance-record.yaml` | `POST /api/yoxa/specialist-attendance-record` |
-| 20 | `specialist-routing-availability.yaml` | `POST /api/yoxa/specialist-routing-availability` |
-| 21 | `coverage-preapproval-verification.yaml` | `POST /api/yoxa/coverage-preapproval-verification` |
-| 22 | `appointment-slot-acceptance.yaml` | `POST /api/yoxa/appointment-slot-acceptance` |
-| 23 | `consolidated-referral-summary-pdf.yaml` | `POST /api/yoxa/consolidated-referral-summary-pdf` |
+## Connector Files
+
+| # | File Name | Workflow Tool | Stage |
+|---|-----------|---------------|-------|
+| 1 | `unified-fhir-referral-exchange.yaml` | `unified_fhir_referral_exchange` | 1 — Create & Route |
+| 2 | `specialist-alert.yaml` | `specialist_alert` | 1 — Create & Route |
+| 3 | `specialist-routing-availability.yaml` | `specialist_routing_availability` | 1 — Create & Route |
+| 4 | `coordinator-escalation-alert.yaml` | `coordinator_escalation_alert` | 1 — Create & Route |
+| 5 | `calculate-urgency-sla.yaml` | `tool_24_call` (Urgency SLA Calculator) | 1 — Create & Route |
+| 6 | `secure-targeted-document-portal.yaml` | `secure_targeted_document_portal` | 2 — Acceptance & Records |
+| 7 | `coverage-preapproval-verification.yaml` | `coverage_preapproval_verification` | 3 — Coverage Verification |
+| 8 | `appointment-slot-acceptance.yaml` | `appointment_slot_acceptance` | 4 — Scheduling & Attendance |
+| 9 | `specialist-attendance-record.yaml` | `specialist_attendance_record` | 4 — Scheduling & Attendance |
+| 10 | `patient-reengagement-nudge.yaml` | `patient_reengagement_nudge` | 4 — Scheduling & Attendance |
+| 11 | `consolidated-referral-summary-pdf.yaml` | `consolidated_referral_summary_pdf` | 5 — Completion & Archive |
+| 12 | `ehr-documentreference-save.yaml` | `ehr_documentreference_save` | 5 — Completion & Archive |
 
 ---
 
-## 🔧 Technical Specifications
+## Technical Specifications
 
 ### Common Features
 - **OpenAPI Version**: 3.1.0
@@ -49,7 +40,60 @@ https://medicotabs.onrender.com/api/yoxa/{operation}
 
 ---
 
-## 📤 Upload to YOXA
+## Workflow Stage Mapping
+
+### Stage 1: Create and Route the Referral
+Tools that create the referral, persist urgency, route through FHIR, alert the specialist, check routing alternatives, calculate the SLA window, and escalate if needed.
+
+| Connector | Purpose |
+|-----------|---------|
+| `unified-fhir-referral-exchange.yaml` | Create and route the FHIR referral transaction |
+| `specialist-alert.yaml` | Send specialist intake alert with urgency and acknowledgment deadline |
+| `specialist-routing-availability.yaml` | Check same-specialty routing options and reroute eligibility |
+| `coordinator-escalation-alert.yaml` | Escalate unacknowledged or denied referrals to care coordinator |
+| `calculate-urgency-sla.yaml` | Calculate SLA deadline (Emergency 30 min / Urgent 4 h / Routine 24 h) |
+
+### Stage 2: Confirm Acceptance and Exchange Documents
+Tools that confirm explicit specialist acceptance, exchange only the targeted records needed for the consultation, and handle post-acceptance re-alerts or rerouting.
+
+| Connector | Purpose |
+|-----------|---------|
+| `unified-fhir-referral-exchange.yaml` | Confirm specialist acceptance through FHIR |
+| `secure-targeted-document-portal.yaml` | Open secure portal for targeted document exchange |
+| `specialist-alert.yaml` | Re-alert if acceptance not received within SLA |
+| `specialist-routing-availability.yaml` | Reroute after failed acceptance re-alert |
+| `coordinator-escalation-alert.yaml` | Escalate denied or unresolved acceptance |
+
+### Stage 3: Verify Applicable Coverage
+Tools that apply the routine-visit exemption or verify eligibility, pre-approval, and co-pay for advanced treatments.
+
+| Connector | Purpose |
+|-----------|---------|
+| `coverage-preapproval-verification.yaml` | Verify insurance eligibility and pre-approval requirements |
+| `coordinator-escalation-alert.yaml` | Escalate when coverage is denied or payer evidence is missing |
+
+### Stage 4: Schedule and Verify Attendance
+Tools that secure a real appointment accepted by the patient, verify attendance from the specialist's record, re-engage after missed visits, and escalate unresolved attendance issues.
+
+| Connector | Purpose |
+|-----------|---------|
+| `appointment-slot-acceptance.yaml` | Record offered slot and patient acceptance |
+| `specialist-attendance-record.yaml` | Retrieve specialist attendance record after appointment |
+| `patient-reengagement-nudge.yaml` | Send urgency-adjusted re-engagement prompt after missed visit |
+| `coordinator-escalation-alert.yaml` | Escalate unresolved attendance issues |
+
+### Stage 5: Approve Completion, Archive, and Deliver
+Tools that generate the consolidated summary PDF, save it to the patient's EHR, and deliver it to the patient. Doctor sign-off is handled by the HITL approval gate (`doctor_completion_signoff_approval`).
+
+| Connector | Purpose |
+|-----------|---------|
+| `consolidated-referral-summary-pdf.yaml` | Generate standardized referral journey PDF |
+| `ehr-documentreference-save.yaml` | Save PDF as FHIR DocumentReference in patient EHR |
+| `coordinator-escalation-alert.yaml` | Escalate archival or delivery failures |
+
+---
+
+## Upload to YOXA
 
 ### Step 1: Navigate to API Configuration
 1. Log into YOXA platform
@@ -57,10 +101,10 @@ https://medicotabs.onrender.com/api/yoxa/{operation}
 3. Click **"Upload Connector"**
 
 ### Step 2: Upload Each File
-For each of the 23 YAML files:
+For each of the 12 YAML files:
 1. Click **"Upload Connector"**
 2. Select the `.yaml` file
-3. Map to corresponding simulated tool name in workflow
+3. Map to the corresponding simulated tool name in the workflow
 4. Click **"Save"**
 
 ### Step 3: Configure Authentication
@@ -79,32 +123,7 @@ For each connector:
 
 ---
 
-## 🔗 Workflow Stage Mapping
-
-### Stage 1: Referral Creation & Routing
-- `get-patient-data.yaml` → Retrieve patient information
-- `get-clinical-summary.yaml` → Get clinical details
-- `generate-referral-letter.yaml` → Create referral document
-
-### Stage 2: Acceptance & Records
-- `send-secure-message.yaml` → Provider communication
-
-### Stage 3: Coverage Verification
-- `check-insurance-eligibility.yaml` → Verify insurance
-- `generate-prior-auth.yaml` → Create prior auth if needed
-
-### Stage 4: Scheduling & Attendance
-- `get-specialist-availability.yaml` → Check availability
-- `book-appointment.yaml` → Schedule appointment
-- `notify-patient.yaml` → Send appointment confirmation
-
-### Stage 5: Completion & Archive
-- `update-patient-record.yaml` → Write results back to EHR
-- `get-treatment-guidelines.yaml` → Clinical decision support
-
----
-
-## 🔐 Security Notes
+## Security Notes
 
 ### Authentication
 All connectors use **Bearer token authentication**:
@@ -138,28 +157,28 @@ YOXA_TOOLS_API_KEY=<bearer token YOXA sends on every /api/yoxa/* call — must m
 
 ---
 
-## ✅ Validation Checklist
+## Validation Checklist
 
 Before activating in YOXA:
 
-- [ ] All 23 YAML files uploaded successfully
+- [ ] All 12 YAML files uploaded successfully
 - [ ] Each connector mapped to correct simulated tool
 - [ ] Authentication configured for each connector
 - [ ] All connection tests passing (200 responses)
-- [ ] Backend endpoints implemented (see next section)
+- [ ] HITL approval gate configured for `doctor_completion_signoff_approval`
 - [ ] Environment variables set in Render
 - [ ] HITL webhook configured
 - [ ] Trigger endpoint verified
 
 ---
 
-## 🛠️ Backend Implementation Status
+## Backend Implementation Status
 
-All 23 route handlers already exist in `backend/src/routes/yoxa.js`, gated by `requireYoxaAuth` (`backend/src/middleware/yoxaAuth.js`). See `backend/YOXA_INTEGRATION_GUIDE.md` for implementation details.
+All 12 route handlers exist in `backend/src/routes/yoxa.js`, gated by `requireYoxaAuth` (`backend/src/middleware/yoxaAuth.js`). Additional backend-only routes (not in the YOXA workflow) remain available for direct API use.
 
 ---
 
-## 📖 Resources
+## Resources
 
 - **YOXA Documentation**: https://docs.yoxa.ai
 - **OpenAPI 3.1 Spec**: https://spec.openapis.org/oas/v3.1.0
@@ -168,7 +187,7 @@ All 23 route handlers already exist in `backend/src/routes/yoxa.js`, gated by `r
 
 ---
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### Connector Upload Fails
 - Check YAML syntax with validator
@@ -189,6 +208,7 @@ All 23 route handlers already exist in `backend/src/routes/yoxa.js`, gated by `r
 
 ---
 
-**Created**: 2026-08-20  
-**Version**: 1.0.0  
-**Status**: Ready for YOXA upload ✅
+**Created**: 2026-08-20
+**Updated**: 2026-08-30
+**Version**: 2.0.0
+**Status**: Aligned with MedicoTabs Referral Lifecycle workflow ✅
