@@ -36,10 +36,14 @@ paths:
                   type: string
                   description: Message body content
                 message_type:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Type of message (query, update, clarification)
                 priority:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Message priority level
       responses:
         '200':
@@ -72,7 +76,9 @@ paths:
                   sent_at:
                     type: string
                   delivery_status:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

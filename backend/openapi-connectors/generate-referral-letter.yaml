@@ -37,13 +37,17 @@ paths:
                   type: string
                   description: Name of referring physician
                 requesting_organization:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Referring organization name
                 specialty_required:
                   type: string
                   description: Specialty consultation requested
                 urgency:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Urgency level
       responses:
         '200':
@@ -69,7 +73,9 @@ paths:
                   generated_at:
                     type: string
                   letter_format:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

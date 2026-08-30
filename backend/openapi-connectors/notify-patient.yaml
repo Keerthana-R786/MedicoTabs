@@ -36,7 +36,9 @@ paths:
                   type: string
                   description: Notification message body
                 delivery_method:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Preferred delivery method (email, sms, portal)
                 appointment_details:
                   type: object
@@ -74,11 +76,15 @@ paths:
                   status:
                     type: string
                   delivery_method:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   sent_at:
                     type: string
                   delivery_status:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

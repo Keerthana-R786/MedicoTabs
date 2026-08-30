@@ -46,10 +46,14 @@ paths:
                   type: string
                   description: Reason for coordinator escalation
                 specialty_required:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Specialty consultation needed
                 sla_deadline:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: SLA deadline timestamp
                 coordinator_id:
                   type:
@@ -83,7 +87,9 @@ paths:
                   status:
                     type: string
                   alert_sent_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   notification_channels:
                     type: array
                     items:

@@ -33,22 +33,34 @@ paths:
                     - 'null'
                   description: Patient full name
                 document_title:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Output file name for the PDF
                 journey_summary:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Complete confirmed referral journey narrative
                 tracker_audit_trail:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Flight tracker audit trail entries
                 final_urgency:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Final urgency level of the referral
                 financial_status:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Final coverage and co-pay status
                 authored_by:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: User identifier of the signing doctor
       responses:
         '200':
@@ -68,7 +80,9 @@ paths:
                   referral_id:
                     type: string
                   referral_number:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   patient_id:
                     type:
                       - string
@@ -86,13 +100,17 @@ paths:
                       - string
                       - 'null'
                   output_type:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   content_length:
                     type: integer
                   status:
                     type: string
                   generated_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   eligible_for_attachment:
                     type: boolean
 

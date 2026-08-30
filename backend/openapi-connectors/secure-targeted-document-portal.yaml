@@ -44,7 +44,9 @@ paths:
                     - 'null'
                   description: Sending provider identifier
                 access_expiration:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: When portal access expires
                 require_acknowledgment:
                   type: boolean
@@ -71,13 +73,21 @@ paths:
                   status:
                     type: string
                   portal_url:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   access_token:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   shared_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   expires_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   encryption_enabled:
                     type: boolean
 

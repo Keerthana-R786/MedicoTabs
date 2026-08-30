@@ -32,10 +32,14 @@ paths:
                     - Urgent
                     - Routine
                 referral_created_at:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Timestamp when referral was created
                 specialty_type:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Type of specialist consultation
       responses:
         '200':
@@ -65,13 +69,17 @@ paths:
                     type: integer
                     description: Hours remaining until SLA breach
                   acknowledgment_deadline:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                     description: Deadline for specialist to acknowledge
                   escalation_required:
                     type: boolean
                     description: Whether immediate escalation is needed
                   calculated_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                     description: Timestamp when calculation was performed
 
 security:

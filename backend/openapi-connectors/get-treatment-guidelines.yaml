@@ -50,7 +50,9 @@ paths:
                   diagnosis:
                     type: string
                   specialty:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   guidelines:
                     type: array
                     items:
@@ -67,7 +69,9 @@ paths:
                         evidence_level:
                           type: string
                   clinical_notes:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   references:
                     type: array
                     items:

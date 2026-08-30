@@ -41,19 +41,29 @@ paths:
                     - workflow_completion
                     - clinical_notes
                 document_title:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Document title
                 authored_by:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Provider who authored document
                 document_date:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Document creation date
                 specialty:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Associated specialty
                 confidentiality:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Confidentiality level
                   enum:
                     - normal
@@ -90,7 +100,9 @@ paths:
                   saved_at:
                     type: string
                   ehr_location:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   fhir_resource_id:
                     type:
                       - string

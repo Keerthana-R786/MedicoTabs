@@ -37,7 +37,9 @@ paths:
                     - incomplete_paperwork
                     - follow_up_required
                 message_content:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Personalized reminder message
                 appointment_id:
                   type:
@@ -45,7 +47,9 @@ paths:
                     - 'null'
                   description: Related appointment if applicable
                 delivery_method:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Preferred contact method
                   enum:
                     - email
@@ -76,13 +80,21 @@ paths:
                   status:
                     type: string
                   sent_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   delivery_method:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   delivery_status:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   next_nudge_scheduled:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

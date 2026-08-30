@@ -28,10 +28,14 @@ paths:
                   type: string
                   description: Patient identifier
                 service_type:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Requested service, e.g. consultation, endoscopic evaluation
                 specialty_type:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Requested specialty
       responses:
         '200':
@@ -53,7 +57,9 @@ paths:
                       - string
                       - 'null'
                   insurance_provider:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   member_id:
                     type:
                       - string
@@ -67,15 +73,23 @@ paths:
                   pre_approval_required:
                     type: boolean
                   pre_approval_status:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   pre_approval_number:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   expected_copay:
                     type: number
                   coverage_details:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   verified_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

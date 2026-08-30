@@ -50,15 +50,25 @@ paths:
                   clinical_findings:
                     type: string
                   diagnosis:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   treatment_history:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   reason_for_referral:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   urgency_level:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   requested_specialty:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   primary_doctor_name:
                     type:
                       - string

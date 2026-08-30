@@ -33,22 +33,32 @@ paths:
                   type: string
                   description: Referring provider NPI or ID
                 requesting_organization:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Referring organization
                 receiving_provider:
                   type: string
                   description: Specialist provider NPI or ID
                 receiving_organization:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Receiving organization
                 clinical_summary:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Clinical information
                 urgency:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Urgency level
                 specialty:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Requested specialty
       responses:
         '200':
@@ -86,13 +96,19 @@ paths:
                   fhir_bundle_id:
                     type: string
                   fhir_version:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   status:
                     type: string
                   created_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   exchange_endpoint:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   transaction_signed:
                     type: boolean
 

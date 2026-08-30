@@ -28,10 +28,14 @@ paths:
                   type: string
                   description: Referral identifier
                 preferred_date_range:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Preferred date range for appointment
                 urgency:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Urgency level
       responses:
         '200':

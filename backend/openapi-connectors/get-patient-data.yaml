@@ -68,17 +68,25 @@ paths:
                       - string
                       - 'null'
                   insurance_provider:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   insurance_id:
                     type:
                       - string
                       - 'null'
                   medical_history:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   allergies:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   current_medications:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   documents:
                     type: array
                     items:

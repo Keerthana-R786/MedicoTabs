@@ -28,7 +28,9 @@ paths:
                   type: string
                   description: Requested specialty to search for
                 preferred_specialist:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Preferred specialist name or facility
                 current_specialist_id:
                   type:
@@ -41,7 +43,9 @@ paths:
                     - 'null'
                   description: Referral urgency level
                 check_type:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Routing check context, e.g. initial_routing or post_realert
       responses:
         '200':
@@ -59,9 +63,13 @@ paths:
                   referral_id:
                     type: string
                   specialty_type:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   check_type:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   routing_status:
                     type: string
                   reroute_required:
@@ -121,7 +129,9 @@ paths:
                       - string
                       - 'null'
                   checked_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

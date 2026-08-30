@@ -46,7 +46,9 @@ paths:
                     - 'null'
                   description: Appointment time
                 notes:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Additional appointment notes
       responses:
         '200':
@@ -91,9 +93,13 @@ paths:
                       - string
                       - 'null'
                   location:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   booked_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

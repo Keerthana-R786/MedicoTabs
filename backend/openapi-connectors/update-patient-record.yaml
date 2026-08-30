@@ -50,7 +50,9 @@ paths:
                     details:
                       type: string
                 clinical_notes:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Clinical notes to add to record
       responses:
         '200':
@@ -75,7 +77,9 @@ paths:
                   updated_at:
                     type: string
                   update_summary:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

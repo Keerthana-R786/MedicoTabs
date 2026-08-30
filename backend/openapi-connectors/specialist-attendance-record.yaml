@@ -50,13 +50,17 @@ paths:
                   type: boolean
                   description: Whether consultation was completed
                 consultation_notes:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Brief consultation summary
                 follow_up_required:
                   type: boolean
                   description: Whether follow-up is needed
                 attended_at:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Timestamp of attendance
       responses:
         '200':
@@ -91,7 +95,9 @@ paths:
                       - string
                       - 'null'
                   next_steps:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

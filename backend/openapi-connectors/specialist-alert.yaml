@@ -46,10 +46,14 @@ paths:
                   type: string
                   description: Urgency level
                 specialty_type:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Type of specialty consultation
                 referral_reason:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Brief reason for referral
                 acknowledgment_deadline:
                   type:
@@ -79,7 +83,9 @@ paths:
                   status:
                     type: string
                   alert_sent_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   notification_channels:
                     type: array
                     items:

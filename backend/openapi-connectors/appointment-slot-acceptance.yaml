@@ -41,7 +41,9 @@ paths:
                     - 'null'
                   description: Offering specialist name
                 organization:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Specialist organization or clinic location
                 slot_date:
                   type: string
@@ -50,13 +52,17 @@ paths:
                   type: string
                   description: Offered appointment time
                 timezone:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: IANA timezone of the slot
                 patient_accepted:
                   type: boolean
                   description: Whether the patient accepted this specific slot
                 contact_channel:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Channel used to reach the patient, e.g. phone, sms, email
       responses:
         '200':
@@ -85,11 +91,17 @@ paths:
                       - string
                       - 'null'
                   slot_date:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   slot_time:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   timezone:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   acceptance_status:
                     type: string
                   is_confirmed_appointment:
@@ -102,13 +114,21 @@ paths:
                       - string
                       - 'null'
                   location:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   contact_channel:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   recorded_at:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   next_action:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []
