@@ -52,7 +52,9 @@ paths:
                   type: string
                   description: Brief reason for referral
                 acknowledgment_deadline:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Deadline for specialist to acknowledge
       responses:
         '200':
@@ -85,7 +87,9 @@ paths:
                   delivery_confirmed:
                     type: boolean
                   acknowledgment_required_by:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

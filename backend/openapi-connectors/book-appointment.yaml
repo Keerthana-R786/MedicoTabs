@@ -36,10 +36,14 @@ paths:
                   type: string
                   description: Selected time slot identifier
                 appointment_date:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Appointment date
                 appointment_time:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Appointment time
                 notes:
                   type: string
@@ -79,9 +83,13 @@ paths:
                   confirmation_number:
                     type: string
                   appointment_date:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   appointment_time:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   location:
                     type: string
                   booked_at:

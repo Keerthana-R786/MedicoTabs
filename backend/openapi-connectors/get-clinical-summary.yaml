@@ -64,7 +64,9 @@ paths:
                       - string
                       - 'null'
                   primary_organization:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
 
 security:
   - bearerAuth: []

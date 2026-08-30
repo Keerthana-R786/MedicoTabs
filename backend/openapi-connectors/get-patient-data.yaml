@@ -56,11 +56,17 @@ paths:
                   gender:
                     type: string
                   contact_number:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   email:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   address:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   insurance_provider:
                     type: string
                   insurance_id:

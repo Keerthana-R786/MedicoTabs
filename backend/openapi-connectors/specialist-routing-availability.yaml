@@ -36,7 +36,9 @@ paths:
                     - 'null'
                   description: Currently routed specialist identifier
                 urgency:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   description: Referral urgency level
                 check_type:
                   type: string
@@ -115,7 +117,9 @@ paths:
                         available:
                           type: boolean
                   urgency:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   checked_at:
                     type: string
 

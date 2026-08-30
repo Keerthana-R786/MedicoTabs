@@ -87,7 +87,9 @@ paths:
                   recorded_at:
                     type: string
                   recorded_by:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                   next_steps:
                     type: string
 
