@@ -76,3 +76,12 @@ paths:
                     type: string
                   encryption_enabled:
                     type: boolean
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

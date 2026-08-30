@@ -73,3 +73,12 @@ paths:
                   calculated_at:
                     type: string
                     description: Timestamp when calculation was performed
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

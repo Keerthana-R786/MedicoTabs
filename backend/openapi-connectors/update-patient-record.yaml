@@ -76,3 +76,12 @@ paths:
                     type: string
                   update_summary:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

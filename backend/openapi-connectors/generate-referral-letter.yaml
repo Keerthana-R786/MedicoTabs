@@ -68,3 +68,12 @@ paths:
                     type: string
                   letter_format:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

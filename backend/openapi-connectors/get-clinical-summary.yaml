@@ -63,3 +63,12 @@ paths:
                     type: string
                   primary_organization:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

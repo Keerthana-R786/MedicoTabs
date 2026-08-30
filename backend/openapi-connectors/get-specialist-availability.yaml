@@ -73,3 +73,12 @@ paths:
                                 type: string
                               duration_minutes:
                                 type: integer
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

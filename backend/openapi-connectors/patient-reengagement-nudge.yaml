@@ -79,3 +79,12 @@ paths:
                     type: string
                   next_nudge_scheduled:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

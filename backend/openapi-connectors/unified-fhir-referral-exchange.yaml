@@ -89,3 +89,12 @@ paths:
                     type: string
                   transaction_signed:
                     type: boolean
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

@@ -91,3 +91,12 @@ paths:
                     type: string
                   indexed:
                     type: boolean
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

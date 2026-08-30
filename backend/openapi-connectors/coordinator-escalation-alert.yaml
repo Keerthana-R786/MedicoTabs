@@ -83,3 +83,12 @@ paths:
                     description: Channels used (email, sms, pager)
                   acknowledgment_required:
                     type: boolean
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

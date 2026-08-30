@@ -80,3 +80,12 @@ paths:
                           type: string
                         category:
                           type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

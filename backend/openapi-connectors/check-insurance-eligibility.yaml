@@ -69,3 +69,12 @@ paths:
                     type: string
                   eligibility_message:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

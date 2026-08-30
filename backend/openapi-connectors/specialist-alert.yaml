@@ -82,3 +82,12 @@ paths:
                     type: boolean
                   acknowledgment_required_by:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

@@ -84,3 +84,12 @@ paths:
                     type: string
                   next_steps:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

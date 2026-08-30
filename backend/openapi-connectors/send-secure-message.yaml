@@ -69,3 +69,12 @@ paths:
                     type: string
                   delivery_status:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

@@ -116,3 +116,12 @@ paths:
                     type: string
                   checked_at:
                     type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
