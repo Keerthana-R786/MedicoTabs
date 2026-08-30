@@ -26,6 +26,7 @@ import messagesRouter from './routes/messages.js';
 
 // Import utilities
 import { captureRawBody } from './utils/hmacVerifier.js';
+import { requireYoxaAuth } from './middleware/yoxaAuth.js';
 
 dotenv.config();
 
@@ -128,7 +129,7 @@ app.use('/api/referrals', referralsRouter);
 app.use('/api/trackers', trackersRouter);
 app.use('/api/hitl', hitlRouter);
 // YOXA tool endpoints - called back by YOXA agents during workflow runs
-app.use('/api/yoxa', yoxaRouter);
+app.use('/api/yoxa', requireYoxaAuth, yoxaRouter);
 app.use('/api/stats', statsRouter);
 // Patient portal - separate low-privilege identity space, patients only ever see their own data
 app.use('/api/patient-auth', patientAuthRouter);
