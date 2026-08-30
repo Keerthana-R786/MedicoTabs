@@ -14,10 +14,14 @@ export function requireYoxaAuth(req, res, next) {
     return next();
   }
 
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  // Accept the token whether the caller sends "Bearer <token>" or just the
+  // raw token as the whole header — different platforms' "Bearer token"
+  // fields disagree on whether they add the prefix themselves. Trim to
+  // tolerate stray whitespace/newlines from a pasted credential.
+  const header = (req.headers.authorization || '').trim();
+  const token = (header.startsWith('Bearer ') ? header.slice(7) : header).trim();
 
-  if (token !== yoxaConfig.toolsApiKey) {
+  if (!token || token !== yoxaConfig.toolsApiKey) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
