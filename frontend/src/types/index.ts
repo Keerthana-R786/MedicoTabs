@@ -209,24 +209,6 @@ export interface CoverageVerification {
   verifiedBy?: string;
 }
 
-// Document Request Types — a specialist naming specific documents they need
-// from the primary doctor, distinct from PatientDocument (already uploaded).
-export interface DocumentRequest {
-  id: string;
-  referralId: string;
-  patientId: string;
-  requestedBy: string;
-  requestedByName: string;
-  requestedFrom: string;
-  items: string[];
-  note?: string;
-  status: 'pending' | 'fulfilled' | 'declined';
-  fulfilledDocumentIds?: string[];
-  fulfilledAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // Notification Types
 export interface Notification {
   id: string;

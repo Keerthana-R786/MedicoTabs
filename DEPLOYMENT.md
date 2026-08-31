@@ -197,25 +197,6 @@ CREATE TABLE notifications (
   action_url TEXT
 );
 
--- Document requests table — a specialist naming specific documents they need
--- from the primary doctor, distinct from patient_documents (what's already
--- uploaded) and referrals.targeted_documents (what's already been shared).
-CREATE TABLE document_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  referral_id UUID REFERENCES referrals(id) ON DELETE CASCADE,
-  patient_id UUID REFERENCES patients(id),
-  requested_by UUID REFERENCES users(id),
-  requested_by_name TEXT NOT NULL,
-  requested_from UUID REFERENCES users(id),
-  items TEXT[] NOT NULL,
-  note TEXT,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'fulfilled', 'declined')),
-  fulfilled_document_ids UUID[],
-  fulfilled_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- Create indexes
 CREATE INDEX idx_patients_referral_id ON patients(referral_id);
 CREATE INDEX idx_patients_primary_doctor ON patients(primary_doctor_id);

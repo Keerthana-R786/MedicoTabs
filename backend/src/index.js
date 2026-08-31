@@ -23,7 +23,6 @@ import notificationsRouter from './routes/notifications.js';
 import documentsRouter from './routes/documents.js';
 import doctorsRouter from './routes/doctors.js';
 import messagesRouter from './routes/messages.js';
-import documentRequestsRouter from './routes/documentRequests.js';
 
 // Import utilities
 import { captureRawBody } from './utils/hmacVerifier.js';
@@ -127,10 +126,6 @@ app.post('/api/yoxa-verify', async (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/patients', patientsRouter);
 app.use('/api/referrals', referralsRouter);
-// Document requests span both /api/referrals/:id/document-requests and
-// /api/patients/:patientId/document-requests — mounted at the shared /api
-// root rather than under one specific resource router.
-app.use('/api', documentRequestsRouter);
 app.use('/api/trackers', trackersRouter);
 app.use('/api/hitl', hitlRouter);
 // YOXA tool endpoints - called back by YOXA agents during workflow runs

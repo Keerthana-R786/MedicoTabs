@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Upload, Plus, FileText, Plane, Trash2, ChevronRight, FileQuestion, CheckCircle2 } from 'lucide-react';
-import { patientsAPI, documentsAPI, flightTrackerAPI, referralsAPI, documentRequestsAPI } from '@/services/api';
-import { Patient, PatientDocument, FlightTracker, Referral, DocumentRequest } from '@/types';
+import { ArrowLeft, Download, Upload, Plus, FileText, Plane, Trash2, ChevronRight } from 'lucide-react';
+import { patientsAPI, documentsAPI, flightTrackerAPI, referralsAPI } from '@/services/api';
+import { Patient, PatientDocument, FlightTracker, Referral } from '@/types';
 import FlightTrackerView, { stageLabels } from '@/components/FlightTracker/FlightTrackerView';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,8 +25,6 @@ const PatientDetail: React.FC = () => {
   const { user } = useAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [documents, setDocuments] = useState<PatientDocument[]>([]);
-  const [documentRequests, setDocumentRequests] = useState<DocumentRequest[]>([]);
-  const [fulfillingId, setFulfillingId] = useState<string | null>(null);
   const [trackers, setTrackers] = useState<FlightTracker[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'documents' | 'trackers'>('info');
@@ -83,7 +81,6 @@ const PatientDetail: React.FC = () => {
     loadDocuments();
     loadTrackers();
     loadReferrals();
-    loadDocumentRequests();
   };
 
   const loadDocuments = async () => {
@@ -92,27 +89,6 @@ const PatientDetail: React.FC = () => {
       setDocuments(await documentsAPI.getByPatientId(id!));
     } catch {
       setDocumentsLoadFailed(true);
-    }
-  };
-
-  const loadDocumentRequests = async () => {
-    try {
-      setDocumentRequests(await documentRequestsAPI.getByPatientId(id!));
-    } catch {
-      // Non-critical — the Documents tab still works without this panel.
-    }
-  };
-
-  const handleFulfillRequest = async (request: DocumentRequest) => {
-    setFulfillingId(request.id);
-    try {
-      const updated = await documentRequestsAPI.fulfill(request.id);
-      setDocumentRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-      success('Marked fulfilled', 'The specialist has been notified.');
-    } catch {
-      showError('Couldn’t update request', 'Please try again.');
-    } finally {
-      setFulfillingId(null);
     }
   };
 
@@ -353,35 +329,6 @@ const PatientDetail: React.FC = () => {
 
           {activeTab === 'documents' && (
             <div>
-              {documentRequests.some((r) => r.status === 'pending') && (
-                <div className="mb-5">
-                  <h3 className="font-bold text-base-800 text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <FileQuestion className="w-4 h-4 text-warning-500" /> Requested Documents
-                  </h3>
-                  <div className="space-y-2">
-                    {documentRequests.filter((r) => r.status === 'pending').map((r) => (
-                      <div key={r.id} className="neu-flat rounded-xl p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-base-800">{r.items.join(', ')}</p>
-                            <p className="text-xs text-base-500 mt-0.5">Requested by {r.requestedByName}</p>
-                            {r.note && <p className="text-xs text-base-500 mt-1">{r.note}</p>}
-                          </div>
-                          <button
-                            onClick={() => handleFulfillRequest(r)}
-                            disabled={fulfillingId === r.id}
-                            className="neu-btn flex items-center gap-1.5 text-xs py-2 px-3 shrink-0 disabled:opacity-50"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            {fulfillingId === r.id ? '...' : 'Mark Fulfilled'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <h3 className="font-bold text-base-800 text-sm uppercase tracking-wider">Documents</h3>
                 <div className="flex items-center gap-2">
