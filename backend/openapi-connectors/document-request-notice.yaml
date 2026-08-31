@@ -1,0 +1,118 @@
+openapi: 3.1.0
+info:
+  title: Document Request Notice
+  version: 1.0.0
+  description: Sends the primary doctor's side an in-app notice listing exactly which records the specialist requested. Returns simulated delivery output (notice_id, delivery_status, recipients_notified) for the YOXA agent.
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/document-request-notice:
+    post:
+      operationId: documentRequestNotice
+      summary: Send the specialist's document request notice to the primary doctor and coordinators
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - requested_records
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier (UUID or RFL number)
+                requested_records:
+                  type:
+                    - array
+                    - string
+                  description: Exact records the specialist requested, as a list of strings
+                  items:
+                    type: string
+                requesting_specialist:
+                  type:
+                    - string
+                    - 'null'
+                  description: Specialist full name making the request
+                requesting_specialist_organization:
+                  type:
+                    - string
+                    - 'null'
+                  description: Specialist's practice or organization
+                urgency:
+                  type:
+                    - string
+                    - 'null'
+                  description: Urgency level (Routine, Urgent, Emergency)
+                patient_name:
+                  type:
+                    - string
+                    - 'null'
+                  description: Patient full name
+                notice_message:
+                  type:
+                    - string
+                    - 'null'
+                  description: Optional custom notice body
+                recipient_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: Primary doctor's user UUID (optional — resolved from referral if omitted)
+      responses:
+        '200':
+          description: Document request notice delivered to primary doctor and coordinator(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - notice_id
+                  - referral_id
+                  - requested_records
+                  - delivery_status
+                properties:
+                  notice_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  patient_name:
+                    type:
+                      - string
+                      - 'null'
+                  requesting_specialist:
+                    type:
+                      - string
+                      - 'null'
+                  requesting_specialist_organization:
+                    type:
+                      - string
+                      - 'null'
+                  requested_records:
+                    type: string
+                  urgency:
+                    type:
+                      - string
+                      - 'null'
+                  recipients_notified:
+                    type: array
+                    items:
+                      type: string
+                  delivery_method:
+                    type: string
+                  delivery_status:
+                    type: string
+                  notice_sent_at:
+                    type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

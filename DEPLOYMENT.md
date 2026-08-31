@@ -197,6 +197,23 @@ CREATE TABLE notifications (
   action_url TEXT
 );
 
+-- Document requests table (in-app document request flow)
+-- See backend/scripts/create_document_requests.sql
+CREATE TABLE document_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  referral_id UUID REFERENCES referrals(id) ON DELETE CASCADE,
+  patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+  requested_by UUID REFERENCES users(id),
+  requested_by_name TEXT,
+  record_types TEXT[],
+  status TEXT NOT NULL DEFAULT 'requested'
+    CHECK (status IN ('requested', 'submitted', 'completed')),
+  documents UUID[],
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  submitted_at TIMESTAMP WITH TIME ZONE,
+  completed_at TIMESTAMP WITH TIME ZONE
+);
+
 -- Create indexes
 CREATE INDEX idx_patients_referral_id ON patients(referral_id);
 CREATE INDEX idx_patients_primary_doctor ON patients(primary_doctor_id);
@@ -205,6 +222,9 @@ CREATE INDEX idx_referrals_workflow ON referrals(workflow_run_id);
 CREATE INDEX idx_messages_referral ON messages(referral_id);
 CREATE INDEX idx_hitl_workflow ON hitl_approval_requests(workflow_run_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id);
+CREATE INDEX idx_doc_requests_referral ON document_requests(referral_id);
+CREATE INDEX idx_doc_requests_requested_by ON document_requests(requested_by);
+CREATE INDEX idx_doc_requests_status ON document_requests(status);
 ```
 
 ## Backend Server Setup

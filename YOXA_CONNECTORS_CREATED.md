@@ -4,11 +4,13 @@
 
 The OpenAPI connector files have been realigned to match the **MedicoTabs Referral Lifecycle** YOXA workflow exactly. Files not referenced by the workflow have been removed, and documentation has been updated across the board.
 
+Platform Email tools for **Document Request Notice**, **Coverage Denial Notice**, and **Doctor Sign-off Reminder** were replaced with in-app notice connectors (`document-request-notice`, `coverage-denial-notice`, `doctor-signoff-reminder`) that deliver to the referring doctor's and coordinators' dashboards, returning simulated delivery output for the agent.
+
 **Location:** `backend/openapi-connectors/`
 
 ---
 
-## Connector Files (12 Total)
+## Connector Files (15 Total)
 
 All files are OpenAPI 3.1.0 YAML, one per simulated API tool in the workflow:
 
@@ -26,8 +28,11 @@ All files are OpenAPI 3.1.0 YAML, one per simulated API tool in the workflow:
 | 10 | `patient-reengagement-nudge.yaml` | `patient_reengagement_nudge` | 4 — Scheduling & Attendance |
 | 11 | `consolidated-referral-summary-pdf.yaml` | `consolidated_referral_summary_pdf` | 5 — Completion & Archive |
 | 12 | `ehr-documentreference-save.yaml` | `ehr_documentreference_save` | 5 — Completion & Archive |
+| 13 | `document-request-notice.yaml` | `documentRequestNotice` (replaces Platform Email notice) | 2 — Acceptance & Records |
+| 14 | `coverage-denial-notice.yaml` | `coverageDenialNotice` (replaces Platform Email notice) | 3 — Coverage Verification |
+| 15 | `doctor-signoff-reminder.yaml` | `doctorSignoffReminder` (replaces Platform Email notice) | 5 — Completion & Archive |
 
-> The workflow's 13th tool, `doctor_completion_signoff_approval`, is a Human-in-the-Loop approval gate configured through YOXA's HITL integration.
+> The workflow's HITL gate, `doctor_completion_signoff_approval`, is a Human-in-the-Loop approval configured through YOXA's HITL integration.
 
 ---
 
@@ -57,7 +62,7 @@ All files are OpenAPI 3.1.0 YAML, one per simulated API tool in the workflow:
 ```bash
 cd backend/openapi-connectors
 ls -1 *.yaml | wc -l
-# Should show: 12
+# Should show: 15
 ```
 
 ---

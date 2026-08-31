@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: Coverage Denial Notice
+  version: 1.0.0
+  description: Sends the referring doctor's side an in-app notice when coverage or pre-approval is explicitly denied. Returns simulated delivery output (notice_id, delivery_status, recipients_notified) for the YOXA agent.
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/coverage-denial-notice:
+    post:
+      operationId: coverageDenialNotice
+      summary: Send the coverage denial notice to the referring doctor and coordinators
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+                - denial_reason
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier (UUID or RFL number)
+                patient_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: Patient identifier
+                patient_name:
+                  type:
+                    - string
+                    - 'null'
+                  description: Patient full name
+                insurance_provider:
+                  type:
+                    - string
+                    - 'null'
+                  description: Payer / insurance provider that denied
+                member_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: Patient's insurance member ID
+                denial_reason:
+                  type: string
+                  description: Reason coverage or pre-approval was denied
+                denial_detail:
+                  type:
+                    - string
+                    - 'null'
+                  description: Additional detail on the denial
+                urgency:
+                  type:
+                    - string
+                    - 'null'
+                  description: Urgency level (Routine, Urgent, Emergency)
+                pre_approval_requested:
+                  type:
+                    - boolean
+                    - 'null'
+                  description: Whether the denial is for a prior authorization request
+                recipient_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: Primary doctor's user UUID (optional — resolved from referral if omitted)
+      responses:
+        '200':
+          description: Coverage denial notice delivered to referring doctor and coordinator(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - notice_id
+                  - referral_id
+                  - denial_reason
+                  - delivery_status
+                properties:
+                  notice_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  patient_id:
+                    type:
+                      - string
+                      - 'null'
+                  patient_name:
+                    type:
+                      - string
+                      - 'null'
+                  insurance_provider:
+                    type:
+                      - string
+                      - 'null'
+                  member_id:
+                    type:
+                      - string
+                      - 'null'
+                  denial_reason:
+                    type: string
+                  denial_detail:
+                    type:
+                      - string
+                      - 'null'
+                  pre_approval_requested:
+                    type: boolean
+                  recipients_notified:
+                    type: array
+                    items:
+                      type: string
+                  delivery_method:
+                    type: string
+                  delivery_status:
+                    type: string
+                  notice_sent_at:
+                    type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

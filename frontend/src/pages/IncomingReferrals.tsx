@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   FileText, Clock, AlertTriangle, CheckCircle, XCircle,
   ChevronDown, ChevronUp, User, Building2, Stethoscope,
-  Calendar, MessageSquare,
+  Calendar, MessageSquare, FileUp,
 } from 'lucide-react';
-import { referralsAPI } from '@/services/api';
+import { referralsAPI, documentRequestsAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { Referral } from '@/types';
+import { Referral, DOCUMENT_RECORD_TYPES } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
 import LoadError from '@/components/ui/LoadError';
@@ -26,6 +26,8 @@ const IncomingReferrals: React.FC = () => {
   const [loadFailed, setLoadFailed] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [denyTargetId, setDenyTargetId] = useState<string | null>(null);
+  const [requestTarget, setRequestTarget] = useState<Referral | null>(null);
+  const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
 
   useEffect(() => { if (user) loadReferrals(); }, [user]);
 
@@ -75,6 +77,37 @@ const IncomingReferrals: React.FC = () => {
       await referralsAPI.denyReferral(id, reason);
       await loadReferrals();
       const msg = formatSuccess('referral-declined');
+      success(msg.title, msg.description);
+    } catch (err: any) {
+      const msg = formatError(err.message);
+      showError(msg.title, msg.description);
+    }
+    finally { setActionLoading(null); }
+  };
+
+  const openRequest = (ref: Referral) => {
+    setRequestTarget(ref);
+    setSelectedRecords([]);
+  };
+
+  const toggleRecord = (value: string) => {
+    setSelectedRecords((prev) =>
+      prev.includes(value) ? prev.filter((r) => r !== value) : [...prev, value]
+    );
+  };
+
+  const handleSubmitRequest = async () => {
+    const ref = requestTarget;
+    if (!ref || selectedRecords.length === 0) return;
+    setActionLoading(ref.id);
+    try {
+      await documentRequestsAPI.create({
+        referralId: ref.id,
+        patientId: ref.patientId,
+        recordTypes: selectedRecords,
+      });
+      setRequestTarget(null);
+      const msg = formatSuccess('document-requested');
       success(msg.title, msg.description);
     } catch (err: any) {
       const msg = formatError(err.message);
@@ -273,7 +306,7 @@ const IncomingReferrals: React.FC = () => {
                         )}
 
                         {ref.status === 'accepted' && (
-                          <div className="mt-4 flex gap-3">
+                          <div className="mt-4 flex gap-3 flex-wrap">
                             <button onClick={() => navigate(`/patients/${ref.patientId}`)}
                               className="neu-btn flex items-center gap-2 text-xs">
                               <User className="w-3.5 h-3.5" /> Patient Record
@@ -290,6 +323,11 @@ const IncomingReferrals: React.FC = () => {
                             })}
                               className="neu-btn flex items-center gap-2 text-xs">
                               <MessageSquare className="w-3.5 h-3.5" /> Message
+                            </button>
+                            <button onClick={() => openRequest(ref)}
+                              disabled={actionLoading === ref.id}
+                              className="neu-btn-primary flex items-center gap-2 text-xs disabled:opacity-50">
+                              <FileUp className="w-3.5 h-3.5" /> Request Documents
                             </button>
                           </div>
                         )}
@@ -317,6 +355,50 @@ const IncomingReferrals: React.FC = () => {
         onConfirm={handleConfirmDeny}
         onCancel={() => setDenyTargetId(null)}
       />
+
+      {requestTarget && (
+        <div className="ui-modal-backdrop" onClick={() => setRequestTarget(null)}>
+          <div className="neu-card w-full max-w-md p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-base-800">Request Documents</h3>
+            <p className="text-xs text-base-500">
+              Request records from the referring doctor for{' '}
+              <span className="font-semibold text-base-700">{requestTarget.patientName}</span>{' '}
+              ({requestTarget.referralNumber}).
+            </p>
+
+            <div className="space-y-2">
+              <label className="block text-[10px] font-semibold text-base-500 uppercase tracking-wider">
+                Select record types <span className="text-danger-500">*</span>
+              </label>
+              {DOCUMENT_RECORD_TYPES.map((rt) => {
+                const checked = selectedRecords.includes(rt.value);
+                return (
+                  <label key={rt.value}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${
+                      checked ? 'border-primary-400 bg-primary-50' : 'border-base-300 hover:border-base-400'
+                    }`}>
+                    <input type="checkbox" className="w-4 h-4 accent-primary-600"
+                      checked={checked} onChange={() => toggleRecord(rt.value)} />
+                    <span className="text-sm font-medium text-base-700">{rt.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button type="button" onClick={() => setRequestTarget(null)} className="neu-btn px-5">
+                Cancel
+              </button>
+              <button type="button"
+                onClick={handleSubmitRequest}
+                disabled={selectedRecords.length === 0 || actionLoading === requestTarget.id}
+                className="neu-btn-primary px-5 flex items-center gap-2 disabled:opacity-50">
+                {actionLoading === requestTarget.id ? 'Sending...' : 'Send Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

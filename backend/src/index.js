@@ -23,6 +23,7 @@ import notificationsRouter from './routes/notifications.js';
 import documentsRouter from './routes/documents.js';
 import doctorsRouter from './routes/doctors.js';
 import messagesRouter from './routes/messages.js';
+import documentRequestsRouter from './routes/documentRequests.js';
 
 // Import utilities
 import { captureRawBody } from './utils/hmacVerifier.js';
@@ -138,7 +139,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/doctors', doctorsRouter);
 app.use('/api/messages', messagesRouter);
-
+app.use('/api/document-requests', documentRequestsRouter);
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({

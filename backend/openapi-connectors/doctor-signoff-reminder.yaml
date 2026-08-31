@@ -1,0 +1,134 @@
+openapi: 3.1.0
+info:
+  title: Doctor Sign-off Reminder
+  version: 1.0.0
+  description: Sends an in-app reminder to the responsible doctor when the required completion sign-off remains pending beyond the configured window. Returns simulated delivery output (reminder_id, delivery_status, recipients_notified) for the YOXA agent.
+servers:
+  - url: https://medicotabs.onrender.com
+paths:
+  /api/yoxa/doctor-signoff-reminder:
+    post:
+      operationId: doctorSignoffReminder
+      summary: Send a sign-off reminder to the responsible doctor and coordinators
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - referral_id
+              properties:
+                referral_id:
+                  type: string
+                  description: Referral identifier (UUID or RFL number)
+                doctor_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: Responsible doctor's user UUID (optional — resolved from referral if omitted)
+                doctor_name:
+                  type:
+                    - string
+                    - 'null'
+                  description: Responsible doctor's full name
+                patient_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: Patient identifier
+                patient_name:
+                  type:
+                    - string
+                    - 'null'
+                  description: Patient full name
+                configured_window:
+                  type:
+                    - string
+                    - 'null'
+                  description: The sign-off window (e.g. "24 hours", "48 hours")
+                window_expired_after:
+                  type:
+                    - string
+                    - 'null'
+                  description: When the window expired (timestamp or relative description)
+                reminder_count:
+                  type:
+                    - integer
+                    - 'null'
+                  description: Which reminder this is (1st, 2nd, etc.)
+                urgency:
+                  type:
+                    - string
+                    - 'null'
+                  description: Urgency level (Routine, Urgent, Emergency)
+                reminder_message:
+                  type:
+                    - string
+                    - 'null'
+                  description: Optional custom reminder body
+      responses:
+        '200':
+          description: Sign-off reminder delivered to responsible doctor and coordinator(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - reminder_id
+                  - referral_id
+                  - delivery_status
+                properties:
+                  reminder_id:
+                    type: string
+                  referral_id:
+                    type: string
+                  doctor_id:
+                    type:
+                      - string
+                      - 'null'
+                  doctor_name:
+                    type:
+                      - string
+                      - 'null'
+                  patient_id:
+                    type:
+                      - string
+                      - 'null'
+                  patient_name:
+                    type:
+                      - string
+                      - 'null'
+                  configured_window:
+                    type:
+                      - string
+                      - 'null'
+                  reminder_count:
+                    type:
+                      - integer
+                      - 'null'
+                  urgency:
+                    type:
+                      - string
+                      - 'null'
+                  recipients_notified:
+                    type: array
+                    items:
+                      type: string
+                  delivery_method:
+                    type: string
+                  delivery_status:
+                    type: string
+                  reminder_sent_at:
+                    type: string
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
