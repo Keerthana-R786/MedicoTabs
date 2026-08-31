@@ -1149,13 +1149,19 @@ router.post('/specialist-routing-availability', async (req, res) => {
       .eq('role', 'specialist_doctor')
       .ilike('specialization', specialty_type || '');
 
-    const alternatives = (candidates || []).map((s) => ({
+    const allAlternatives = (candidates || []).map((s) => ({
       specialist_id: s.id,
       specialist_name: `${s.first_name} ${s.last_name}`,
       organization: s.organization,
       specialty: s.specialization,
       available: true,
     }));
+
+    // A reroute call excludes the specialist who didn't respond — an initial
+    // routing check (no current_specialist_id yet) considers everyone.
+    const alternatives = current_specialist_id
+      ? allAlternatives.filter((a) => a.specialist_id !== current_specialist_id)
+      : allAlternatives;
 
     const preferredMatch =
       preferred_specialist &&
@@ -1164,20 +1170,50 @@ router.post('/specialist-routing-availability', async (req, res) => {
       );
 
     const routingStatus = preferredMatch || alternatives.length > 0 ? 'available' : 'no_alternatives';
+    const selected = preferredMatch || alternatives[0] || null;
+    // Only an actual reroute call (one that names a non-responsive current
+    // specialist) reassigns the referral — an initial routing check must
+    // stay read-only, it's just surfacing options before anyone is assigned.
+    const isReroute = Boolean(current_specialist_id) && Boolean(selected);
+
+    if (isReroute) {
+      const { data: referral } = await findReferral(referral_id);
+      if (referral) {
+        await supabase
+          .from('referrals')
+          .update({
+            specialist_id: selected.specialist_id,
+            specialist_name: selected.specialist_name,
+            specialist_organization: selected.organization,
+            status: 'routed',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', referral.id);
+
+        await safeNotify({
+          userId: selected.specialist_id,
+          type: 'referral',
+          title: `Rerouted ${urgency || 'Routine'} Referral: ${referral.patient_name || 'Patient'}`,
+          message: `${specialty_type || 'Specialist'} consultation rerouted to you after no response from the previous specialist.`,
+          referralId: referral.id,
+        });
+
+        await advanceTrackerStage(referral.tracker_id, 'create_and_route', {
+          agentAction: buildAgentAction('specialist_routing_availability', {
+            description: `Rerouted from unresponsive specialist to ${selected.specialist_name}`,
+            result: selected.specialist_id,
+          }),
+        });
+      }
+    }
 
     res.json({
       referral_id,
       specialty_type,
       check_type: check_type || 'initial_routing',
       routing_status: routingStatus,
-      reroute_required: false,
-      selected_specialist: preferredMatch
-        ? {
-            specialist_id: preferredMatch.specialist_id,
-            specialist_name: preferredMatch.specialist_name,
-            organization: preferredMatch.organization,
-          }
-        : alternatives[0] || null,
+      reroute_required: isReroute,
+      selected_specialist: selected,
       alternatives_considered: alternatives.length,
       alternatives: alternatives.slice(0, 5),
       urgency,

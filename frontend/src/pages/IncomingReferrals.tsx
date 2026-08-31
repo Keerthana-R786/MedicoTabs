@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import {
   FileText, Clock, AlertTriangle, CheckCircle, XCircle,
   ChevronDown, ChevronUp, User, Building2, Stethoscope,
-  Calendar, MessageSquare,
+  Calendar, MessageSquare, FileQuestion,
 } from 'lucide-react';
-import { referralsAPI } from '@/services/api';
+import { referralsAPI, documentRequestsAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { Referral } from '@/types';
+import { Referral, DocumentRequest } from '@/types';
 import { useToast } from '@/contexts/ToastContext';
 import { formatError, formatSuccess } from '@/utils/messages';
 import LoadError from '@/components/ui/LoadError';
 import PromptModal from '@/components/ui/PromptModal';
+import DocumentRequestModal from '@/components/ui/DocumentRequestModal';
 
 const IncomingReferrals: React.FC = () => {
   const { user } = useAuth();
@@ -26,6 +27,9 @@ const IncomingReferrals: React.FC = () => {
   const [loadFailed, setLoadFailed] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [denyTargetId, setDenyTargetId] = useState<string | null>(null);
+  const [documentRequests, setDocumentRequests] = useState<Record<string, DocumentRequest[]>>({});
+  const [requestModalFor, setRequestModalFor] = useState<string | null>(null);
+  const [sendingRequest, setSendingRequest] = useState(false);
 
   useEffect(() => { if (user) loadReferrals(); }, [user]);
 
@@ -65,6 +69,38 @@ const IncomingReferrals: React.FC = () => {
   };
 
   const handleDeny = (id: string) => setDenyTargetId(id);
+
+  const toggleExpanded = (id: string) => {
+    const next = expandedId === id ? null : id;
+    setExpandedId(next);
+    if (next && !documentRequests[next]) loadDocumentRequests(next);
+  };
+
+  const loadDocumentRequests = async (referralId: string) => {
+    try {
+      const requests = await documentRequestsAPI.getByReferralId(referralId);
+      setDocumentRequests((prev) => ({ ...prev, [referralId]: requests }));
+    } catch {
+      // Non-critical — the card still works without this panel.
+    }
+  };
+
+  const handleSendDocumentRequest = async (items: string[], note: string) => {
+    const id = requestModalFor;
+    setRequestModalFor(null);
+    if (!id) return;
+    setSendingRequest(true);
+    try {
+      await documentRequestsAPI.create(id, items, note || undefined);
+      await loadDocumentRequests(id);
+      success('Document request sent', `${items.length} item(s) requested from the primary doctor.`);
+    } catch (err: any) {
+      const msg = formatError(err.message);
+      showError(msg.title, msg.description);
+    } finally {
+      setSendingRequest(false);
+    }
+  };
 
   const handleConfirmDeny = async (reason: string) => {
     const id = denyTargetId;
@@ -175,7 +211,7 @@ const IncomingReferrals: React.FC = () => {
                     }`}>
 
                     {/* Main row */}
-                    <div className="p-5 cursor-pointer" onClick={() => setExpandedId(expandedId === ref.id ? null : ref.id)}>
+                    <div className="p-5 cursor-pointer" onClick={() => toggleExpanded(ref.id)}>
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-4">
                           <div className="w-11 h-11 bg-base-200 rounded-xl flex items-center justify-center   flex-shrink-0">
@@ -185,6 +221,15 @@ const IncomingReferrals: React.FC = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="font-bold text-base-800">{ref.referralNumber}</h3>
                               <span className={`neu-badge ${uc.badge}`}>{ref.urgency}</span>
+                              {ref.coverageStatus && ref.coverageStatus !== 'not_applicable' && (
+                                <span className={`neu-badge ${{
+                                  verified: 'bg-success-100 text-success-700',
+                                  denied: 'bg-danger-100 text-danger-700',
+                                  pending: 'bg-warning-100 text-warning-700',
+                                }[ref.coverageStatus]}`}>
+                                  {{ verified: 'Covered', denied: 'Cannot Be Claimed', pending: 'Verifying Coverage' }[ref.coverageStatus]}
+                                </span>
+                              )}
                               {sla && (
                                 <span className={`neu-badge ${sla.urgent ? 'bg-danger-100 text-danger-700 animate-pulse' : 'bg-base-300 text-base-600'}`}>
                                   ⏱ {sla.text}
@@ -272,11 +317,37 @@ const IncomingReferrals: React.FC = () => {
                           </div>
                         )}
 
+                        {(documentRequests[ref.id] || []).length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {(documentRequests[ref.id] || []).map((dr) => (
+                              <div key={dr.id} className="neu-pressed rounded-xl p-4">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[10px] text-base-400 uppercase tracking-wider mb-1">
+                                    Documents Requested
+                                  </p>
+                                  <span className={`neu-badge text-[10px] ${
+                                    dr.status === 'fulfilled' ? 'bg-success-100 text-success-700' : 'bg-warning-100 text-warning-700'
+                                  }`}>
+                                    {dr.status}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-base-700">{dr.items.join(', ')}</p>
+                                {dr.note && <p className="text-[11px] text-base-500 mt-1">{dr.note}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         {ref.status === 'accepted' && (
-                          <div className="mt-4 flex gap-3">
+                          <div className="mt-4 flex gap-3 flex-wrap">
                             <button onClick={() => navigate(`/patients/${ref.patientId}`)}
                               className="neu-btn flex items-center gap-2 text-xs">
                               <User className="w-3.5 h-3.5" /> Patient Record
+                            </button>
+                            <button onClick={() => setRequestModalFor(ref.id)}
+                              disabled={sendingRequest}
+                              className="neu-btn flex items-center gap-2 text-xs disabled:opacity-50">
+                              <FileQuestion className="w-3.5 h-3.5" /> Request Documents
                             </button>
                             <button onClick={() => navigate('/messages', {
                               state: {
@@ -316,6 +387,12 @@ const IncomingReferrals: React.FC = () => {
         confirmLabel="Decline"
         onConfirm={handleConfirmDeny}
         onCancel={() => setDenyTargetId(null)}
+      />
+
+      <DocumentRequestModal
+        open={requestModalFor !== null}
+        onConfirm={handleSendDocumentRequest}
+        onCancel={() => setRequestModalFor(null)}
       />
     </div>
   );

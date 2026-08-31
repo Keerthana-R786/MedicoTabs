@@ -1,17 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Filter, Calendar } from 'lucide-react';
-import { referralsAPI } from '@/services/api';
+import { FileText, Plus, Filter, Calendar, ShieldAlert } from 'lucide-react';
+import { referralsAPI, coverageAPI } from '@/services/api';
 import { Referral } from '@/types';
+import { useToast } from '@/contexts/ToastContext';
 import LoadError from '@/components/ui/LoadError';
+
+const coverageBadge = (status?: Referral['coverageStatus']) => {
+  if (!status || status === 'not_applicable') return null;
+  const styles = {
+    verified: 'bg-success-100 text-success-700',
+    denied: 'bg-danger-100 text-danger-700',
+    pending: 'bg-warning-100 text-warning-700',
+  }[status];
+  const label = { verified: 'Covered', denied: 'Cannot Be Claimed', pending: 'Verifying Coverage' }[status];
+  return <span className={`neu-badge ${styles}`}>{label}</span>;
+};
 
 const Referrals: React.FC = () => {
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filtered, setFiltered] = useState<Referral[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [escalatingId, setEscalatingId] = useState<string | null>(null);
 
   useEffect(() => { loadReferrals(); }, []);
 
@@ -32,6 +46,18 @@ const Referrals: React.FC = () => {
     setRetrying(true);
     await loadReferrals();
     setRetrying(false);
+  };
+
+  const handleEscalateCoverage = async (referralId: string) => {
+    setEscalatingId(referralId);
+    try {
+      const { notifiedCount } = await coverageAPI.escalateDenial(referralId);
+      success('Escalated to coordinator', `${notifiedCount} people notified.`);
+    } catch {
+      showError('Couldn’t escalate', 'Please try again.');
+    } finally {
+      setEscalatingId(null);
+    }
   };
 
   const statusColor = (s: string) => ({
@@ -96,6 +122,7 @@ const Referrals: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className={`neu-badge ${urgencyColor(ref.urgency)}`}>{ref.urgency}</span>
                   <span className={`neu-badge capitalize ${statusColor(ref.status)}`}>{ref.status}</span>
+                  {coverageBadge(ref.coverageStatus)}
                 </div>
               </div>
 
@@ -123,6 +150,21 @@ const Referrals: React.FC = () => {
                   <span className="font-semibold text-base-500">Reason:</span> {ref.referralReason}
                 </p>
               </div>
+
+              {ref.coverageStatus === 'denied' && (
+                <div className="mt-2 flex items-center justify-between neu-pressed rounded-lg px-3 py-2">
+                  <span className="text-[11px] text-danger-600 flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5" /> Coverage denied — needs follow-up
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEscalateCoverage(ref.id); }}
+                    disabled={escalatingId === ref.id}
+                    className="neu-btn text-[11px] py-1.5 px-3 disabled:opacity-50"
+                  >
+                    {escalatingId === ref.id ? '...' : 'Escalate to Coordinator'}
+                  </button>
+                </div>
+              )}
 
               {ref.appointmentDetails && (
                 <div className="mt-2 flex items-center gap-3 text-[10px] text-base-500">

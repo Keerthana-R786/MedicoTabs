@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Patient, Referral, FlightTracker, PatientDocument, HITLApprovalRequest, Message, Notification, User, CoverageVerification, NotificationPreferences } from '@/types';
+import { Patient, Referral, FlightTracker, PatientDocument, HITLApprovalRequest, Message, Notification, User, CoverageVerification, NotificationPreferences, DocumentRequest } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:5000';
 
@@ -219,6 +219,32 @@ export const doctorsAPI = {
 export const coverageAPI = {
   getByReferralId: async (referralId: string): Promise<CoverageVerification | null> => {
     const response = await apiClient.get(`/api/referrals/${referralId}/coverage`);
+    return response.data;
+  },
+  escalateDenial: async (referralId: string, note?: string): Promise<{ escalated: boolean; notifiedCount: number }> => {
+    const response = await apiClient.post(`/api/referrals/${referralId}/coverage/escalate`, { note });
+    return response.data;
+  },
+};
+
+// Document Requests API — specialist requesting specific documents from the
+// primary doctor (separate from documentsAPI, which is upload/download of
+// documents that already exist).
+export const documentRequestsAPI = {
+  create: async (referralId: string, items: string[], note?: string): Promise<DocumentRequest> => {
+    const response = await apiClient.post(`/api/referrals/${referralId}/document-requests`, { items, note });
+    return response.data;
+  },
+  getByReferralId: async (referralId: string): Promise<DocumentRequest[]> => {
+    const response = await apiClient.get(`/api/referrals/${referralId}/document-requests`);
+    return response.data;
+  },
+  getByPatientId: async (patientId: string): Promise<DocumentRequest[]> => {
+    const response = await apiClient.get(`/api/patients/${patientId}/document-requests`);
+    return response.data;
+  },
+  fulfill: async (id: string, documentIds?: string[]): Promise<DocumentRequest> => {
+    const response = await apiClient.post(`/api/document-requests/${id}/fulfill`, { documentIds });
     return response.data;
   },
 };
