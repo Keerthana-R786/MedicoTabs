@@ -1,8 +1,8 @@
 # YOXA OpenAPI Connector Files
 
-This directory contains 15 OpenAPI 3.1.0 connector files for the MedicoTabs Referral Lifecycle workflow — one per simulated API tool endpoint (including in-app notice connectors that replace the former Platform Email tools).
+This directory contains 12 OpenAPI 3.1.0 connector files for the MedicoTabs Referral Lifecycle workflow — one per simulated API tool endpoint.
 
-The workflow's HITL gate, `doctor_completion_signoff_approval`, is a Human-in-the-Loop (HITL) approval configured through YOXA's HITL integration, not an API connector.
+The workflow's 13th tool, `doctor_completion_signoff_approval`, is a Human-in-the-Loop (HITL) approval gate configured through YOXA's HITL integration, not an API connector.
 
 ## Connector Files
 
@@ -20,9 +20,6 @@ The workflow's HITL gate, `doctor_completion_signoff_approval`, is a Human-in-th
 | 10 | `patient-reengagement-nudge.yaml` | `patient_reengagement_nudge` | 4 — Scheduling & Attendance |
 | 11 | `consolidated-referral-summary-pdf.yaml` | `consolidated_referral_summary_pdf` | 5 — Completion & Archive |
 | 12 | `ehr-documentreference-save.yaml` | `ehr_documentreference_save` | 5 — Completion & Archive |
-| 13 | `document-request-notice.yaml` | `documentRequestNotice` (replaces Platform Email Document Request Notice) | 2 — Acceptance & Records |
-| 14 | `coverage-denial-notice.yaml` | `coverageDenialNotice` (replaces Platform Email Coverage Denial Notice) | 3 — Coverage Verification |
-| 15 | `doctor-signoff-reminder.yaml` | `doctorSignoffReminder` (replaces Platform Email Doctor Sign-off Reminder) | 5 — Completion & Archive |
 
 ---
 
@@ -104,7 +101,7 @@ Tools that generate the consolidated summary PDF, save it to the patient's EHR, 
 3. Click **"Upload Connector"**
 
 ### Step 2: Upload Each File
-For each of the 15 YAML files:
+For each of the 12 YAML files:
 1. Click **"Upload Connector"**
 2. Select the `.yaml` file
 3. Map to the corresponding simulated tool name in the workflow
@@ -164,7 +161,7 @@ YOXA_TOOLS_API_KEY=<bearer token YOXA sends on every /api/yoxa/* call — must m
 
 Before activating in YOXA:
 
-- [ ] All 15 YAML files uploaded successfully
+- [ ] All 12 YAML files uploaded successfully
 - [ ] Each connector mapped to correct simulated tool
 - [ ] Authentication configured for each connector
 - [ ] All connection tests passing (200 responses)
@@ -177,7 +174,7 @@ Before activating in YOXA:
 
 ## Backend Implementation Status
 
-All 15 connector route handlers (including the in-app `document-request-notice`, `coverage-denial-notice`, and `doctor-signoff-reminder` tools replacing the former email tools) exist in `backend/src/routes/yoxa.js`, gated by `requireYoxaAuth` (`backend/src/middleware/yoxaAuth.js`). Additional backend-only routes (not in the YOXA workflow) remain available for direct API use.
+All 12 route handlers exist in `backend/src/routes/yoxa.js`, gated by `requireYoxaAuth` (`backend/src/middleware/yoxaAuth.js`). Additional backend-only routes (not in the YOXA workflow) remain available for direct API use.
 
 ---
 

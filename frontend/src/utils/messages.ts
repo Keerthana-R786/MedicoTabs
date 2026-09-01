@@ -102,21 +102,6 @@ export function formatSuccess(kind: string, detail?: string): { title: string; d
         title: 'Referral declined',
         description: 'The referring team has been notified with your reason.',
       };
-    case 'document-requested':
-      return {
-        title: 'Document request sent',
-        description: 'The referring doctor has been notified to provide the records.',
-      };
-    case 'documents-submitted':
-      return {
-        title: 'Documents submitted',
-        description: detail || 'The specialist has been notified the records are ready.',
-      };
-    case 'request-completed':
-      return {
-        title: 'Request completed',
-        description: 'The document request has been closed out.',
-      };
     default:
       return { title: kind, description: detail };
   }

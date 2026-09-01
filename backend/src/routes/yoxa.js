@@ -685,66 +685,18 @@ router.post('/coordinator-escalation-alert', async (req, res) => {
 
     const alertId = `ESC-${Date.now()}`;
 
-    // Resolve the referral so the escalation can be annotated onto the right
-    // flight tracker and so a real coordinator can be resolved when one is not
-    // supplied.
-    const { data: referral } = referral_id ? await findReferral(referral_id) : { data: null };
-
-    const resolvedCoordinatorId = asUuid(coordinator_id) || null;
-
-    // Fall back to the first coordinator on record so the alert always lands.
-    let notifiedCoordinatorId = resolvedCoordinatorId;
-    if (!notifiedCoordinatorId) {
-      const { data: coordinators } = await supabase
-        .from('users')
-        .select('id')
-        .eq('role', 'coordinator')
-        .limit(1);
-      notifiedCoordinatorId = coordinators?.[0]?.id || coordinator_id || 'coordinator-001';
-    }
-
     await safeNotify({
-      userId: notifiedCoordinatorId,
+      userId: coordinator_id,
       type: 'alert',
       title: `URGENT: ${urgency_level || 'Referral'} Escalation`,
-      message: `Referral ${referral_id || referral?.id || referral?.referral_number} for ${patient_name || 'patient'} requires immediate attention. Reason: ${escalation_reason}. Specialty: ${specialty_required || 'N/A'}. SLA Deadline: ${sla_deadline || 'N/A'}`,
-      referralId: asUuid(referral_id) || referral?.id,
+      message: `Referral ${referral_id} for ${patient_name || 'patient'} requires immediate attention. Reason: ${escalation_reason}. Specialty: ${specialty_required || 'N/A'}. SLA Deadline: ${sla_deadline || 'N/A'}`,
+      referralId: referral_id,
     });
-
-    // Annotate the tracker so the escalation appears in the audit trail. The
-    // stage depends on why we escalated, but coverage_verification only exists
-    // for advanced treatments — if the mapped stage is absent (e.g. a general
-    // visit), fall back to create_and_route so the escalation is never silent.
-    let stageKey = 'create_and_route';
-    const reason = String(escalation_reason || '').toLowerCase();
-    if (/(coverage|insurance|pre.?approval)/.test(reason)) stageKey = 'coverage_verification';
-    else if (/(attendance|missed|no.?show|schedul)/.test(reason)) stageKey = 'scheduling_and_attendance';
-    else if (/(archiv|deliver|sign.?off|complet)/.test(reason)) stageKey = 'completion_and_archive';
-    else if (/(document|record|accept)/.test(reason)) stageKey = 'acceptance_and_records';
-
-    if (referral?.tracker_id) {
-      const annotated = await advanceTrackerStage(referral.tracker_id, stageKey, {
-        status: 'requires_attention',
-        agentAction: buildAgentAction('coordinator_escalation_alert', {
-          description: `Coordinator escalation alert sent (reason: ${escalation_reason || 'referral issue'})`,
-          result: `Coordinator ${notifiedCoordinatorId} notified`,
-        }),
-      });
-      if (!annotated && stageKey !== 'create_and_route') {
-        await advanceTrackerStage(referral.tracker_id, 'create_and_route', {
-          status: 'requires_attention',
-          agentAction: buildAgentAction('coordinator_escalation_alert', {
-            description: `Coordinator escalation alert sent (reason: ${escalation_reason || 'referral issue'})`,
-            result: `Coordinator ${notifiedCoordinatorId} notified`,
-          }),
-        });
-      }
-    }
 
     res.json({
       alert_id: alertId,
-      referral_id: referral_id || referral?.id,
-      coordinator_id: notifiedCoordinatorId,
+      referral_id,
+      coordinator_id: coordinator_id || 'coordinator-001',
       coordinator_notified: true,
       status: 'escalated',
       alert_sent_at: new Date().toISOString(),
@@ -805,33 +757,18 @@ router.post('/patient-reengagement-nudge', async (req, res) => {
 
     const nudgeId = `NUDGE-${Date.now()}`;
 
-    // Resolve the referral so the nudge can annotate the correct flight tracker.
-    const { data: referral } = referral_id ? await findReferral(referral_id) : { data: null };
-
-    const resolvedPatientId = asUuid(patient_id) || referral?.patient_id || null;
-
     await safeNotify({
-      userId: resolvedPatientId || patient_id,
+      userId: patient_id,
       type: 'alert',
       title: `Action Required: ${String(nudge_type || 'visit').replace(/_/g, ' ')}`,
       message: message_content || 'Please complete your referral process',
-      referralId: asUuid(referral_id) || referral?.id,
+      referralId: referral_id,
     });
-
-    if (referral?.tracker_id) {
-      await advanceTrackerStage(referral.tracker_id, 'scheduling_and_attendance', {
-        notes: `Re-engagement nudge sent (${nudge_type || 'standard'})`,
-        agentAction: buildAgentAction('patient_reengagement_nudge', {
-          description: `Patient re-engagement nudge sent${nudge_type ? ` (${nudge_type})` : ''}`,
-          result: message_content || 'Nudge delivered to patient',
-        }),
-      });
-    }
 
     res.json({
       nudge_id: nudgeId,
-      patient_id: resolvedPatientId || patient_id,
-      referral_id: referral_id || referral?.id,
+      patient_id,
+      referral_id,
       status: 'sent',
       sent_at: new Date().toISOString(),
       delivery_method: delivery_method || 'email',
@@ -979,305 +916,7 @@ router.post('/secure-targeted-document-portal', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 17. Document Request Notice
-// In-app equivalent of the workflow's Platform Email "Document Request Notice":
-// instead of emailing a fixed recipient, it surfaces an in-app notification
-// (and a message) on the primary doctor's and care coordinator's dashboards,
-// listing exactly which records the specialist requested.
-// ---------------------------------------------------------------------------
-router.post('/document-request-notice', async (req, res) => {
-  try {
-    const {
-      referral_id,
-      requested_records,
-      requesting_specialist,
-      requesting_specialist_organization,
-      urgency,
-      patient_name,
-      notice_message,
-      recipient_id,
-    } = req.body;
-
-    const noticeId = `DRN-${Date.now()}`;
-
-    // Resolve the referral to find the referring doctor's real UUID and the
-    // patient — don't trust the agent to always pass a usable recipient UUID.
-    const { data: referral } = referral_id ? await findReferral(referral_id) : { data: null };
-
-    const primaryDoctorId = asUuid(recipient_id) || referral?.primary_doctor_id || null;
-
-    const items = Array.isArray(requested_records)
-      ? requested_records.join(', ')
-      : (requested_records || 'records required for the consultation');
-    const noticeText =
-      notice_message ||
-      `The specialist${requesting_specialist ? ` (${requesting_specialist})` : ''} requested the following records for ${patient_name || 'the patient'}: ${items}.`;
-
-    // 1) Notify the primary (referring) doctor — the main deliverable.
-    const notifiedIds = [primaryDoctorId];
-
-    // 2) Notify every care coordinator so the notice also lands on their dashboard.
-    const { data: coordinators } = await supabase
-      .from('users')
-      .select('id')
-      .eq('role', 'coordinator');
-
-    (coordinators || []).forEach((c) => notifiedIds.push(c.id));
-
-    notifiedIds.forEach((uid) => {
-      if (!asUuid(uid)) return;
-      safeNotify({
-        userId: uid,
-        type: 'message',
-        title: `${urgency || 'Referral'} Document Request`,
-        message: noticeText,
-        referralId: asUuid(referral_id) || referral?.id,
-      });
-    });
-
-    // 3) Also create a message to the referring doctor so it appears in Messages.
-    if (asUuid(primaryDoctorId)) {
-      await supabase.from('messages').insert({
-        referral_id: asUuid(referral_id) || referral?.id || null,
-        sender_id: null,
-        sender_name: requesting_specialist || 'Specialist',
-        sender_role: 'agent',
-        recipient_id: asUuid(primaryDoctorId) || primaryDoctorId,
-        recipient_name: 'Primary Doctor',
-        subject: `Document Request — ${patient_name || 'Referral'}`,
-        content: noticeText,
-        is_read: false,
-      });
-    }
-
-    if (referral?.tracker_id) {
-      await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
-        agentAction: buildAgentAction('document_request_notice', {
-          description: `Document request notice sent to primary doctor and coordinator(s)`,
-          result: `${items}`,
-        }),
-      });
-    }
-
-    res.json({
-      notice_id: noticeId,
-      referral_id: referral_id || referral?.id,
-      patient_name,
-      requesting_specialist,
-      requesting_specialist_organization: requesting_specialist_organization || null,
-      requested_records: items,
-      urgency,
-      recipients_notified: notifiedIds.filter(asUuid),
-      delivery_method: 'in_app_notification',
-      delivery_status: 'delivered',
-      notice_sent_at: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('Document request notice error:', error);
-    res.status(500).json({ error: 'Failed to send document request notice' });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// 18. Coverage Denial Notice
-// Replaces the Platform Email "Coverage Denial Notice" tool with an in-app
-// notice delivered to the referring doctor's + coordinators' dashboards.
-// ---------------------------------------------------------------------------
-router.post('/coverage-denial-notice', async (req, res) => {
-  try {
-    const {
-      referral_id,
-      patient_id,
-      patient_name,
-      insurance_provider,
-      member_id,
-      denial_reason,
-      denial_detail,
-      urgency,
-      pre_approval_requested,
-      recipient_id,
-    } = req.body;
-
-    const noticeId = `CDN-${Date.now()}`;
-
-    const { data: referral } = referral_id ? await findReferral(referral_id) : { data: null };
-
-    const primaryDoctorId = asUuid(recipient_id) || referral?.primary_doctor_id || null;
-
-    const reason = denial_reason || 'coverage or pre-approval was denied';
-    const detail = denial_detail || 'The payer did not authorize coverage for this consultation.';
-    const noticeText = `Coverage has been denied for ${patient_name || 'the patient'}${patient_id ? ` (${patient_id})` : ''} on referral ${referral_id || referral?.id || 'this referral'}. Reason: ${reason}. ${detail}`;
-
-    const notifiedIds = [primaryDoctorId];
-
-    const { data: coordinators } = await supabase
-      .from('users')
-      .select('id')
-      .eq('role', 'coordinator');
-
-    (coordinators || []).forEach((c) => notifiedIds.push(c.id));
-
-    notifiedIds.forEach((uid) => {
-      if (!asUuid(uid)) return;
-      safeNotify({
-        userId: uid,
-        type: 'alert',
-        title: `Coverage Denial${pre_approval_requested ? ' — Pre-Approval' : ''}`,
-        message: noticeText,
-        referralId: asUuid(referral_id) || referral?.id,
-      });
-    });
-
-    if (asUuid(primaryDoctorId)) {
-      await supabase.from('messages').insert({
-        referral_id: asUuid(referral_id) || referral?.id || null,
-        sender_id: null,
-        sender_name: 'Coverage Team',
-        sender_role: 'agent',
-        recipient_id: primaryDoctorId,
-        recipient_name: 'Primary Doctor',
-        subject: `Coverage Denial Notice — ${patient_name || 'Referral'}`,
-        content: noticeText,
-        is_read: false,
-      });
-    }
-
-    if (referral?.tracker_id) {
-      await advanceTrackerStage(referral.tracker_id, 'coverage_verification', {
-        agentAction: buildAgentAction('coverage_denial_notice', {
-          description: `Coverage denial notice sent to primary doctor and coordinator(s)`,
-          result: `${insurance_provider || 'unknown'} — ${reason}`,
-        }),
-      });
-    }
-
-    res.json({
-      notice_id: noticeId,
-      referral_id: referral_id || referral?.id,
-      patient_id,
-      patient_name,
-      insurance_provider: insurance_provider || null,
-      member_id: member_id || null,
-      denial_reason: reason,
-      denial_detail: detail,
-      pre_approval_requested: Boolean(pre_approval_requested),
-      recipients_notified: notifiedIds.filter(asUuid),
-      delivery_method: 'in_app_notification',
-      delivery_status: 'delivered',
-      notice_sent_at: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('Coverage denial notice error:', error);
-    res.status(500).json({ error: 'Failed to send coverage denial notice' });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// 19. Doctor Sign-off Reminder
-// Replaces the Platform Email "Doctor Sign-off Reminder" tool with an in-app
-// notice to the responsible doctor when the completion sign-off remains
-// pending beyond the configured window.
-// ---------------------------------------------------------------------------
-router.post('/doctor-signoff-reminder', async (req, res) => {
-  try {
-    const {
-      referral_id,
-      doctor_id,
-      doctor_name,
-      patient_id,
-      patient_name,
-      configured_window,
-      window_expired_after,
-      reminder_count,
-      urgency,
-      reminder_message,
-    } = req.body;
-
-    const reminderId = `DSR-${Date.now()}`;
-
-    const { data: referral } = referral_id ? await findReferral(referral_id) : { data: null };
-
-    const responsibleDoctorId = asUuid(doctor_id) || referral?.primary_doctor_id || null;
-
-    const windowText =
-      configured_window ||
-      (window_expired_after ? `after ${window_expired_after}` : 'beyond the configured window');
-    const count = reminder_count
-      ? ` (reminder ${reminder_count})`
-      : '';
-    const reminderText =
-      reminder_message ||
-      `The doctor sign-off for referral ${referral_id || referral?.id || 'this referral'}${patient_name ? ` for ${patient_name}` : ''} is still pending ${windowText}. Please complete the sign-off to close out the referral.${count}`;
-
-    const notifiedIds = [responsibleDoctorId];
-
-    const { data: coordinators } = await supabase
-      .from('users')
-      .select('id')
-      .eq('role', 'coordinator');
-
-    (coordinators || []).forEach((c) => notifiedIds.push(c.id));
-
-    notifiedIds.forEach((uid) => {
-      if (!asUuid(uid)) return;
-      safeNotify({
-        userId: uid,
-        type: 'alert',
-        title: `Action Required — Doctor Sign-off Pending${count}`,
-        message: reminderText,
-        referralId: asUuid(referral_id) || referral?.id,
-        actionUrl: referral?.id ? `/approvals` : null,
-      });
-    });
-
-    if (asUuid(responsibleDoctorId)) {
-      await supabase.from('messages').insert({
-        referral_id: asUuid(referral_id) || referral?.id || null,
-        sender_id: null,
-        sender_name: 'Care Workflow',
-        sender_role: 'agent',
-        recipient_id: responsibleDoctorId,
-        recipient_name: doctor_name || 'Doctor',
-        subject: `Doctor Sign-off Reminder — ${patient_name || 'Referral'}`,
-        content: reminderText,
-        is_read: false,
-      });
-    }
-
-    if (referral?.tracker_id) {
-      await advanceTrackerStage(referral.tracker_id, 'completion_and_archive', {
-        status: 'requires_attention',
-        notes: 'Doctor sign-off pending — reminder sent',
-        agentAction: buildAgentAction('doctor_signoff_reminder', {
-          description: `Sign-off reminder sent to responsible doctor${doctor_name ? ` (${doctor_name})` : ''}`,
-          result: reminderText,
-        }),
-      });
-    }
-
-    res.json({
-      reminder_id: reminderId,
-      referral_id: referral_id || referral?.id,
-      doctor_id: responsibleDoctorId,
-      doctor_name: doctor_name || null,
-      patient_id,
-      patient_name,
-      configured_window: windowText,
-      reminder_count: reminder_count || null,
-      urgency: urgency || null,
-      recipients_notified: notifiedIds.filter(asUuid),
-      delivery_method: 'in_app_notification',
-      delivery_status: 'delivered',
-      reminder_sent_at: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('Doctor sign-off reminder error:', error);
-    res.status(500).json({ error: 'Failed to send doctor sign-off reminder' });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// 20. Specialist Alert
+// 17. Specialist Alert
 // ---------------------------------------------------------------------------
 router.post('/specialist-alert', async (req, res) => {
   try {
@@ -1526,26 +1165,8 @@ router.post('/specialist-routing-availability', async (req, res) => {
 
     const routingStatus = preferredMatch || alternatives.length > 0 ? 'available' : 'no_alternatives';
 
-    // Resolve the referral so the routing check annotates the correct tracker.
-    const { data: referral } = referral_id ? await findReferral(referral_id) : { data: null };
-
-    // Initial routing happens in create_and_route; a post-acceptance reroute
-    // happens in acceptance_and_records.
-    const stageKey = String(check_type || 'initial_routing').includes('reroute')
-      ? 'acceptance_and_records'
-      : 'create_and_route';
-
-    if (referral?.tracker_id) {
-      await advanceTrackerStage(referral.tracker_id, stageKey, {
-        agentAction: buildAgentAction('specialist_routing_availability', {
-          description: `Routing availability check (${check_type || 'initial_routing'}) for ${specialty_type || 'specialty'}`,
-          result: `Status ${routingStatus}, ${alternatives.length} same-specialty alternative(s)`,
-        }),
-      });
-    }
-
     res.json({
-      referral_id: referral_id || referral?.id,
+      referral_id,
       specialty_type,
       check_type: check_type || 'initial_routing',
       routing_status: routingStatus,

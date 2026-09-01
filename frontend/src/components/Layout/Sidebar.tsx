@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Users, FileText, Stethoscope, MessageSquare,
-  Bell, CheckCircle, Settings, Inbox, FileUp,
+  Bell, CheckCircle, Settings, Inbox,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,7 +17,6 @@ const Sidebar: React.FC = () => {
     { path: '/patients', icon: Users, label: 'Patient Records', badge: false },
     { path: '/messages', icon: MessageSquare, label: 'Messages', badge: false },
     { path: '/approvals', icon: CheckCircle, label: 'Approvals', badge: false },
-    { path: '/document-requests', icon: FileUp, label: 'Document Requests', badge: false },
     { path: '/notifications', icon: Bell, label: 'Notifications', badge: false },
     { path: '/settings', icon: Settings, label: 'Settings', badge: false },
   ];
@@ -29,7 +28,6 @@ const Sidebar: React.FC = () => {
     { path: '/doctors', icon: Stethoscope, label: 'Doctor Records', badge: false },
     { path: '/messages', icon: MessageSquare, label: 'Messages', badge: false },
     { path: '/approvals', icon: CheckCircle, label: 'Approvals', badge: false },
-    { path: '/document-requests', icon: FileUp, label: 'Document Requests', badge: false },
     { path: '/notifications', icon: Bell, label: 'Notifications', badge: false },
     { path: '/settings', icon: Settings, label: 'Settings', badge: false },
   ];

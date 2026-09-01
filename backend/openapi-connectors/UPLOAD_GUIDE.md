@@ -5,7 +5,7 @@
 ### 1. Open YOXA Platform
 Go to: **Release → API Configuration**
 
-### 2. Upload All 15 Files
+### 2. Upload All 12 Files
 
 Click **"Upload Connector"** and upload each file in this order:
 
@@ -19,21 +19,18 @@ Stage 1 — Create and Route the Referral:
 
 Stage 2 — Confirm Acceptance and Exchange Documents:
   6. secure-targeted-document-portal.yaml
-  7. document-request-notice.yaml   (replaces Platform Email Document Request Notice)
 
 Stage 3 — Verify Applicable Coverage:
-  8. coverage-preapproval-verification.yaml
-  9. coverage-denial-notice.yaml    (replaces Platform Email Coverage Denial Notice)
+  7. coverage-preapproval-verification.yaml
 
 Stage 4 — Schedule and Verify Attendance:
-  10. appointment-slot-acceptance.yaml
-  11. specialist-attendance-record.yaml
-  12. patient-reengagement-nudge.yaml
+  8. appointment-slot-acceptance.yaml
+  9. specialist-attendance-record.yaml
+  10. patient-reengagement-nudge.yaml
 
 Stage 5 — Approve Completion, Archive, and Deliver:
-  13. consolidated-referral-summary-pdf.yaml
-  14. ehr-documentreference-save.yaml
-  15. doctor-signoff-reminder.yaml  (replaces Platform Email Doctor Sign-off Reminder)
+  11. consolidated-referral-summary-pdf.yaml
+  12. ehr-documentreference-save.yaml
 ```
 
 ### 3. Map to Workflow Tools
@@ -54,11 +51,8 @@ After each upload, YOXA will ask you to map the connector to a simulated tool in
 | `patient-reengagement-nudge.yaml` | `patient_reengagement_nudge` |
 | `consolidated-referral-summary-pdf.yaml` | `consolidated_referral_summary_pdf` |
 | `ehr-documentreference-save.yaml` | `ehr_documentreference_save` |
-| `document-request-notice.yaml` | `documentRequestNotice` (replaces Platform Email Document Request Notice) |
-| `coverage-denial-notice.yaml` | `coverageDenialNotice` (replaces Platform Email Coverage Denial Notice) |
-| `doctor-signoff-reminder.yaml` | `doctorSignoffReminder` (replaces Platform Email Doctor Sign-off Reminder) |
 
-> **Note:** The workflow's HITL gate, `doctor_completion_signoff_approval`, is a Human-in-the-Loop approval — configure it under **Release → Integration → Human Approvals**, not as an API connector.
+> **Note:** The workflow's 13th tool, `doctor_completion_signoff_approval`, is a Human-in-the-Loop approval gate — configure it under **Release → Integration → Human Approvals**, not as an API connector.
 
 ### 4. Configure Authentication
 
@@ -108,7 +102,7 @@ For each connector:
 
 Before activating workflow:
 
-- [ ] All 15 connectors uploaded
+- [ ] All 12 connectors uploaded
 - [ ] All connectors mapped to correct workflow tools
 - [ ] All authentication configured
 - [ ] All connection tests passing

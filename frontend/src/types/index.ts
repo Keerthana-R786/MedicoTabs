@@ -222,31 +222,6 @@ export interface Notification {
   actionUrl?: string;
 }
 
-// Document Request Types
-export interface DocumentRequest {
-  id: string;
-  referralId: string;
-  patientId: string;
-  requestedBy: string;
-  requestedByName: string;
-  recordTypes: string[];
-  status: 'requested' | 'submitted' | 'completed';
-  documents: string[];
-  uploadedCount?: number;
-  createdAt: string;
-  submittedAt?: string;
-  completedAt?: string;
-}
-
-export const DOCUMENT_RECORD_TYPES = [
-  { value: 'lab_result', label: 'Lab Result' },
-  { value: 'imaging', label: 'Imaging / Scan' },
-  { value: 'prescription', label: 'Prescription' },
-  { value: 'referral', label: 'Referral Letter' },
-  { value: 'medical_history', label: 'Medical History' },
-  { value: 'other', label: 'Other Record' },
-] as const;
-
 // Statistics Types
 export interface DashboardStats {
   totalPatients: number;

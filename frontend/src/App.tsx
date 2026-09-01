@@ -19,7 +19,6 @@ import Messages from './pages/Messages';
 import Approvals from './pages/Approvals';
 import Doctors from './pages/Doctors';
 import Notifications from './pages/Notifications';
-import DocumentRequests from './pages/DocumentRequests';
 import SettingsPage from './pages/Settings';
 import PatientAccess from './pages/PatientAccess';
 import PatientPortal from './pages/PatientPortal';
@@ -218,17 +217,6 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <Notifications />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/document-requests"
-              element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <DocumentRequests />
                   </AppLayout>
                 </ProtectedRoute>
               }

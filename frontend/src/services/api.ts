@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Patient, Referral, FlightTracker, PatientDocument, HITLApprovalRequest, Message, Notification, User, CoverageVerification, NotificationPreferences, DocumentRequest } from '@/types';
+import { Patient, Referral, FlightTracker, PatientDocument, HITLApprovalRequest, Message, Notification, User, CoverageVerification, NotificationPreferences } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:5000';
 
@@ -241,41 +241,6 @@ export const notificationsAPI = {
 export const statsAPI = {
   getDashboard: async () => {
     const response = await apiClient.get('/api/stats/dashboard');
-    return response.data;
-  },
-};
-
-// Document Requests API
-export const documentRequestsAPI = {
-  getAll: async (): Promise<DocumentRequest[]> => {
-    const response = await apiClient.get('/api/document-requests');
-    return response.data;
-  },
-  create: async (data: {
-    referralId: string;
-    patientId: string;
-    recordTypes: string[];
-  }): Promise<DocumentRequest> => {
-    const response = await apiClient.post('/api/document-requests', data);
-    return response.data;
-  },
-  submit: async (
-    requestId: string,
-    files: File[],
-    category: string
-  ): Promise<DocumentRequest> => {
-    const formData = new FormData();
-    files.forEach((f) => formData.append('files', f));
-    formData.append('category', category);
-    const response = await apiClient.post(
-      `/api/document-requests/${requestId}/submit`,
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    );
-    return response.data;
-  },
-  complete: async (requestId: string): Promise<DocumentRequest> => {
-    const response = await apiClient.post(`/api/document-requests/${requestId}/complete`);
     return response.data;
   },
 };
