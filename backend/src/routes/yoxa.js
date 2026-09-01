@@ -3,6 +3,7 @@ import PDFDocument from 'pdfkit';
 import { supabase } from '../config/database.js';
 import { requireYoxaAuth } from '../middleware/yoxaAuth.js';
 import { advanceTrackerStage, buildAgentAction } from '../utils/trackerStages.js';
+import { sendEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 router.use(requireYoxaAuth);
@@ -684,23 +685,51 @@ router.post('/coordinator-escalation-alert', async (req, res) => {
     } = req.body;
 
     const alertId = `ESC-${Date.now()}`;
+    const explicitCoordinator = asUuid(coordinator_id);
 
-    await safeNotify({
-      userId: coordinator_id,
-      type: 'alert',
-      title: `URGENT: ${urgency_level || 'Referral'} Escalation`,
-      message: `Referral ${referral_id} for ${patient_name || 'patient'} requires immediate attention. Reason: ${escalation_reason}. Specialty: ${specialty_required || 'N/A'}. SLA Deadline: ${sla_deadline || 'N/A'}`,
-      referralId: referral_id,
-    });
+    // The caller usually has no way to know a specific coordinator's user
+    // id — falling back to "coordinator-001" (not a real user) meant these
+    // escalations were never actually seen by anyone. Resolve every
+    // coordinator on staff instead so at least one real human gets it.
+    let coordinatorRows = [];
+    if (explicitCoordinator) {
+      coordinatorRows = [{ id: explicitCoordinator }];
+    } else {
+      const { data: coordinators } = await supabase.from('users').select('id, email, first_name').eq('role', 'coordinator');
+      coordinatorRows = coordinators || [];
+    }
+    const coordinatorIds = coordinatorRows.map((c) => c.id);
+
+    for (const id of coordinatorIds) {
+      await safeNotify({
+        userId: id,
+        type: 'alert',
+        title: `URGENT: ${urgency_level || 'Referral'} Escalation`,
+        message: `Referral ${referral_id} for ${patient_name || 'patient'} requires immediate attention. Reason: ${escalation_reason}. Specialty: ${specialty_required || 'N/A'}. SLA Deadline: ${sla_deadline || 'N/A'}`,
+        referralId: referral_id,
+      });
+    }
+
+    let emailResult = { sent: false, reason: 'No coordinator email on file' };
+    for (const c of coordinatorRows) {
+      if (!c.email) continue;
+      emailResult = await sendEmail({
+        to: c.email,
+        subject: `URGENT: ${urgency_level || 'Referral'} escalation — ${referral_id}`,
+        html: `<p>Referral <strong>${referral_id}</strong> for ${patient_name || 'patient'} requires immediate attention.</p>
+          <p>Reason: ${escalation_reason}<br/>Specialty: ${specialty_required || 'N/A'}<br/>SLA Deadline: ${sla_deadline || 'N/A'}</p>`,
+      });
+    }
 
     res.json({
       alert_id: alertId,
       referral_id,
-      coordinator_id: coordinator_id || 'coordinator-001',
-      coordinator_notified: true,
-      status: 'escalated',
+      coordinator_ids: coordinatorIds,
+      coordinator_notified: coordinatorIds.length > 0,
+      email_sent: emailResult.sent,
+      status: coordinatorIds.length > 0 ? 'escalated' : 'escalation_failed_no_coordinator',
       alert_sent_at: new Date().toISOString(),
-      notification_channels: ['email', 'sms', 'portal'],
+      notification_channels: ['email', 'portal'],
       acknowledgment_required: urgency_level === 'Emergency',
     });
   } catch (error) {
@@ -757,23 +786,51 @@ router.post('/patient-reengagement-nudge', async (req, res) => {
 
     const nudgeId = `NUDGE-${Date.now()}`;
 
-    await safeNotify({
-      userId: patient_id,
-      type: 'alert',
-      title: `Action Required: ${String(nudge_type || 'visit').replace(/_/g, ' ')}`,
-      message: message_content || 'Please complete your referral process',
-      referralId: referral_id,
+    // The Scheduling agent frequently only knows the patient's *name*
+    // (e.g. "Keerth R"), not their real id, and sends that as patient_id —
+    // safeNotify's asUuid() then silently drops it (invalid FK) and nothing
+    // ever reached the patient. The referral row always has the real
+    // patient_id and urgency, so resolve through it instead of trusting
+    // whatever shape the caller sent.
+    const { data: referral } = await findReferral(referral_id);
+    const realPatientId = referral?.patient_id || asUuid(patient_id);
+    const { data: patient } = realPatientId
+      ? await supabase.from('patients').select('email, first_name').eq('id', realPatientId).maybeSingle()
+      : { data: null };
+
+    // Urgency-adjusted re-engagement timing per the workflow contract:
+    // hours for Urgent/Emergency, one to two days for Routine.
+    const urgency = referral?.urgency || req.body.urgency_level;
+    const nextNudgeMs =
+      urgency === 'Emergency' ? 2 * 60 * 60 * 1000 :
+      urgency === 'Urgent' ? 6 * 60 * 60 * 1000 :
+      36 * 60 * 60 * 1000; // Routine: 1.5 days, inside the 1-2 day window
+
+    const emailResult = await sendEmail({
+      to: patient?.email,
+      subject: `Action needed: ${String(nudge_type || 'visit').replace(/_/g, ' ')}`,
+      html: `<p>Hi ${patient?.first_name || ''},</p><p>${message_content || 'Please complete your referral process.'}</p>`,
     });
+
+    if (referral?.primary_doctor_id) {
+      await safeNotify({
+        userId: referral.primary_doctor_id,
+        type: 'alert',
+        title: `Patient nudge sent: ${referral.referral_number}`,
+        message: `${nudge_type || 'Re-engagement'} nudge sent to ${patient?.first_name || referral.patient_name} via ${delivery_method || 'email'}.`,
+        referralId: referral.id,
+      });
+    }
 
     res.json({
       nudge_id: nudgeId,
-      patient_id,
+      patient_id: realPatientId,
       referral_id,
-      status: 'sent',
+      status: emailResult.sent ? 'sent' : 'attempted',
       sent_at: new Date().toISOString(),
       delivery_method: delivery_method || 'email',
-      delivery_status: 'delivered',
-      next_nudge_scheduled: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      delivery_status: emailResult.sent ? 'delivered' : `failed: ${emailResult.reason}`,
+      next_nudge_scheduled: new Date(Date.now() + nextNudgeMs).toISOString(),
     });
   } catch (error) {
     console.error('Patient reengagement nudge error:', error);
@@ -934,34 +991,67 @@ router.post('/specialist-alert', async (req, res) => {
 
     const alertId = `ALERT-${Date.now()}`;
 
-    if (referral_id) {
-      const { data: referral } = await findReferral(referral_id);
-      if (referral) {
-        await advanceTrackerStage(referral.tracker_id, 'create_and_route', {
-          agentAction: buildAgentAction('specialist_alert', {
-            description: `${specialist_name || 'Specialist'} alerted about the referral`,
-            result: 'Notified',
-          }),
-        });
+    const { data: referral } = referral_id ? await findReferral(referral_id) : { data: null };
+
+    // Same failure mode as the patient nudge: the agent doesn't always have
+    // a real specialist_id yet (e.g. the very first alert before routing
+    // resolves one), and a name/garbage value silently dropped the
+    // notification with no one the wiser. Fall back to whatever the
+    // referral itself already has on file.
+    let resolvedSpecialistId = asUuid(specialist_id) || referral?.specialist_id || null;
+    let specialistEmail;
+    if (!resolvedSpecialistId && specialist_name) {
+      const cleanName = specialist_name.replace(/^dr\.?\s*/i, '').trim();
+      const { data: match } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('role', 'specialist_doctor')
+        .or(`first_name.ilike.%${cleanName}%,last_name.ilike.%${cleanName}%`)
+        .limit(1)
+        .maybeSingle();
+      if (match) {
+        resolvedSpecialistId = match.id;
+        specialistEmail = match.email;
       }
+    }
+    if (resolvedSpecialistId && !specialistEmail) {
+      const { data: specialist } = await supabase.from('users').select('email').eq('id', resolvedSpecialistId).maybeSingle();
+      specialistEmail = specialist?.email;
+    }
+
+    if (referral) {
+      await advanceTrackerStage(referral.tracker_id, 'create_and_route', {
+        agentAction: buildAgentAction('specialist_alert', {
+          status: resolvedSpecialistId ? 'success' : 'failed',
+          description: `${specialist_name || 'Specialist'} alerted about the referral`,
+          result: resolvedSpecialistId ? 'Notified' : 'No matching specialist found — alert not delivered',
+        }),
+      });
     }
 
     await safeNotify({
-      userId: specialist_id,
+      userId: resolvedSpecialistId,
       type: 'referral',
       title: `New ${urgency_level || 'Routine'} Referral: ${patient_name || 'Patient'}`,
       message: `${specialty_type || 'Specialist'} consultation requested. Reason: ${referral_reason || 'N/A'}. Acknowledge by ${acknowledgment_deadline || 'SLA deadline'}.`,
       referralId: referral_id,
     });
 
+    const emailResult = await sendEmail({
+      to: specialistEmail,
+      subject: `New ${urgency_level || 'Routine'} referral: ${patient_name || 'Patient'}`,
+      html: `<p>A new ${specialty_type || 'specialist'} consultation has been requested.</p>
+        <p>Reason: ${referral_reason || 'N/A'}<br/>Acknowledge by: ${acknowledgment_deadline || 'SLA deadline'}</p>`,
+    });
+
     res.json({
       alert_id: alertId,
       referral_id,
-      specialist_id,
-      status: 'delivered',
+      specialist_id: resolvedSpecialistId,
+      status: resolvedSpecialistId ? 'delivered' : 'failed_no_specialist',
       alert_sent_at: new Date().toISOString(),
-      notification_channels: ['email', 'sms', 'portal'],
-      delivery_confirmed: true,
+      notification_channels: emailResult.sent ? ['email', 'portal'] : ['portal'],
+      delivery_confirmed: Boolean(resolvedSpecialistId),
       acknowledgment_required_by: acknowledgment_deadline,
     });
   } catch (error) {
@@ -1029,12 +1119,28 @@ router.post('/ehr-documentreference-save', async (req, res) => {
     }
 
     if (referral) {
-      await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
+      // This is the last piece of archive evidence this backend can
+      // actually confirm — patient-delivery confirmation is a YOXA-native
+      // Platform Email step we're never told the outcome of, so a
+      // successful EHR save is the closing signal available to us. A
+      // failure here must NOT read as done — leave it flagged instead.
+      await advanceTrackerStage(referral.tracker_id, 'completion_and_archive', {
+        status: storagePath ? 'completed' : 'requires_attention',
+        notes: storagePath ? 'Referral summary archived to EHR' : 'EHR archival failed — referral remains open',
         agentAction: buildAgentAction('ehr_documentreference_save', {
+          status: storagePath ? 'success' : 'failed',
           description: `${document_type || 'Document'} saved to EHR`,
-          result: fileName,
+          result: storagePath ? fileName : 'Storage upload failed',
         }),
       });
+
+      // Only advance a referral that's already past doctor sign-off — this
+      // tool shouldn't be able to "complete" a referral on its own if it's
+      // ever called before approval for some other document type.
+      if (storagePath && referral.status === 'completed') {
+        await supabase.from('referrals').update({ status: 'archived' }).eq('id', referral.id);
+        await supabase.from('flight_trackers').update({ completed_at: new Date().toISOString() }).eq('id', referral.tracker_id);
+      }
     }
 
     // Matches the response schema in
@@ -1284,6 +1390,46 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
         .eq('id', referral.id);
     }
 
+    // Coverage Denial Notice — the referring doctor's side must be told
+    // explicitly, and a human coordinator must review; never silently drop
+    // a denied referral into scheduling.
+    let denialEmailResult = null;
+    if (!isEligible && referral?.primary_doctor_id) {
+      const { data: primaryDoctor } = await supabase
+        .from('users')
+        .select('email, first_name, last_name')
+        .eq('id', referral.primary_doctor_id)
+        .maybeSingle();
+
+      denialEmailResult = await sendEmail({
+        to: primaryDoctor?.email,
+        subject: `Coverage denied for referral ${referral.referral_number}`,
+        html: `<p>Hi Dr. ${primaryDoctor?.first_name || ''},</p>
+          <p>Insurance coverage/pre-approval was <strong>denied</strong> for referral <strong>${referral.referral_number}</strong> (${referral.patient_name}, ${specialty_type || 'specialist'} ${service_type || 'consultation'}).</p>
+          <p>Reason: No active insurance on file for the patient.</p>
+          <p>This referral has been flagged for care-coordinator review and will not proceed to scheduling until resolved.</p>`,
+      });
+
+      await safeNotify({
+        userId: referral.primary_doctor_id,
+        type: 'alert',
+        title: `Coverage denied: ${referral.referral_number}`,
+        message: `Insurance coverage/pre-approval denied for ${referral.patient_name}. Care coordinator review required.`,
+        referralId: referral.id,
+      });
+
+      const { data: coordinators } = await supabase.from('users').select('id').eq('role', 'coordinator');
+      for (const c of coordinators || []) {
+        await safeNotify({
+          userId: c.id,
+          type: 'alert',
+          title: `Coverage denied — review required: ${referral.referral_number}`,
+          message: `${referral.patient_name}'s coverage was denied for ${specialty_type || 'specialist'} ${service_type || 'consultation'}. Referral is held pending review.`,
+          referralId: referral.id,
+        });
+      }
+    }
+
     // Write the outcome straight onto the tracker's coverage_verification stage
     // so the UI shows "Covered" / "Cannot be claimed" without depending on how
     // the external workflow chooses to phrase its own stage update.
@@ -1299,7 +1445,9 @@ router.post('/coverage-preapproval-verification', async (req, res) => {
         agentAction: buildAgentAction('coverage_preapproval_verification', {
           status: isEligible ? 'success' : 'failed',
           description: `Insurance coverage check for ${specialty_type || 'specialist'} ${service_type || 'treatment'}`,
-          result: resultText,
+          result: isEligible
+            ? resultText
+            : `${resultText} — ${denialEmailResult?.sent ? 'doctor emailed' : 'doctor notified in-app'}, coordinator review requested`,
         }),
       });
     }
@@ -1493,9 +1641,13 @@ router.post('/consolidated-referral-summary-pdf', async (req, res) => {
     }
 
     if (referral?.tracker_id) {
+      // Not 'completed' yet — per the workflow contract, closure requires
+      // confirmed EHR save evidence too. Marking it done here (before that
+      // exists) is exactly the "silently release" the spec warns against;
+      // ehr-documentreference-save is what actually closes this stage.
       await advanceTrackerStage(referral.tracker_id, 'completion_and_archive', {
-        status: 'completed',
-        notes: 'Consolidated referral summary generated and archived',
+        status: 'in_progress',
+        notes: 'Referral summary generated — archiving to EHR next',
         agentAction: buildAgentAction('consolidated_referral_summary_pdf', {
           description: 'Final referral summary PDF generated',
           result: fileName,

@@ -500,10 +500,74 @@ router.put('/:id', async (req, res) => {
     if (b.specialistOrganization !== undefined) updateData.specialist_organization = b.specialistOrganization;
     if (b.referralReason !== undefined) updateData.referral_reason = b.referralReason;
     if (b.serviceType !== undefined) updateData.service_type = b.serviceType;
-    if (b.urgency !== undefined) updateData.urgency = b.urgency;
     if (b.coverageStatus !== undefined) updateData.coverage_status = b.coverageStatus;
     if (b.attendanceStatus !== undefined) updateData.attendance_status = b.attendanceStatus;
     if (b.appointmentDetails !== undefined) updateData.appointment_details = b.appointmentDetails;
+
+    // A mid-flight urgency change is a distinct, workflow-affecting event —
+    // per the workflow contract, the SLA deadline is "the single source of
+    // truth for all later alert, escalation, and nudge timing," so changing
+    // urgency without recalculating it left every downstream stage timing
+    // against a stale window. Recompute it the same way referral creation
+    // does, log it on the tracker so it's visible, and tell the assigned
+    // specialist their acknowledgment window just changed.
+    let urgencyChanged = false;
+    let previousUrgency = null;
+    if (b.urgency !== undefined) {
+      const { data: current } = await supabase
+        .from('referrals')
+        .select('urgency, tracker_id, specialist_id, specialist_name, referral_number, patient_name')
+        .eq('id', req.params.id)
+        .single();
+
+      previousUrgency = current?.urgency;
+      urgencyChanged = Boolean(current) && current.urgency !== b.urgency;
+      updateData.urgency = b.urgency;
+
+      if (urgencyChanged) {
+        const newDeadline = new Date();
+        if (b.urgency === 'Emergency') newDeadline.setMinutes(newDeadline.getMinutes() + 30);
+        else if (b.urgency === 'Urgent') newDeadline.setHours(newDeadline.getHours() + 4);
+        else newDeadline.setHours(newDeadline.getHours() + 24);
+        updateData.acknowledgment_deadline = newDeadline.toISOString();
+
+        if (current.tracker_id) {
+          // Land the note on whichever stage is actually in progress, not
+          // always the first one — a referral already at scheduling
+          // shouldn't have its urgency-change note buried back on
+          // create_and_route where no one still looking at this stage
+          // would see it.
+          const { data: tracker } = await supabase
+            .from('flight_trackers')
+            .select('stages')
+            .eq('id', current.tracker_id)
+            .single();
+          const activeStage = tracker?.stages?.find((s) => s.status === 'in_progress')
+            || tracker?.stages?.find((s) => s.status === 'pending')
+            || tracker?.stages?.[0];
+
+          if (activeStage) {
+            await advanceTrackerStage(current.tracker_id, activeStage.stage, {
+              notes: `Urgency changed ${previousUrgency} → ${b.urgency}; SLA deadline recalculated`,
+              agentAction: buildAgentAction('urgency_updated', {
+                description: `Urgency changed from ${previousUrgency} to ${b.urgency}`,
+                result: `New acknowledgment deadline: ${newDeadline.toISOString()}`,
+              }),
+            });
+          }
+        }
+
+        if (current.specialist_id) {
+          await supabase.from('notifications').insert({
+            user_id: current.specialist_id,
+            type: 'alert',
+            title: `Urgency changed: ${current.referral_number}`,
+            message: `Referral for ${current.patient_name} urgency changed from ${previousUrgency} to ${b.urgency}. New acknowledgment deadline: ${newDeadline.toISOString()}.`,
+            referral_id: req.params.id,
+          });
+        }
+      }
+    }
 
     const { data, error } = await supabase
       .from('referrals')
@@ -514,7 +578,7 @@ router.put('/:id', async (req, res) => {
 
     if (error) throw error;
 
-    res.json(data);
+    res.json({ ...data, urgencyChanged, previousUrgency: urgencyChanged ? previousUrgency : undefined });
   } catch (error) {
     console.error('Error updating referral:', error);
     res.status(500).json({ error: 'Failed to update referral' });

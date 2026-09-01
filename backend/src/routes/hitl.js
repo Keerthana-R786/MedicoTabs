@@ -300,6 +300,22 @@ router.post('/:requestId/respond', requireDoctorAuth, async (req, res) => {
     // client-supplied userId here.
     const userId = req.userId;
 
+    // This previously marked every response "completed" — approve, reject,
+    // AND escalate all flipped the referral and tracker to done, which
+    // contradicts "accept completion only when a doctor explicitly signs
+    // off" and actively lied about rejected/escalated referrals being
+    // finished. Read the actual decision off the selected option (YOXA
+    // includes a `decision` field per option); an override message with no
+    // matching option is never treated as approval.
+    const selectedOption = (approval.options || []).find(
+      (o) => (o.option_id || o.optionId) === selectedOptionId
+    );
+    const decision = selectedOption?.decision
+      || (selectedOption?.title?.toLowerCase().includes('approve') ? 'approved' : null)
+      || (selectedOption?.title?.toLowerCase().includes('reject') ? 'rejected' : null)
+      || (selectedOption?.title?.toLowerCase().includes('escalat') ? 'escalated' : null);
+    const isApproved = decision === 'approved';
+
     try {
       // Send response to YOXA
       console.log('🚀 Sending response to YOXA...');
@@ -308,9 +324,9 @@ router.post('/:requestId/respond', requireDoctorAuth, async (req, res) => {
         selectedOptionId,
         overrideMessage
       );
-      
+
       console.log('✓ YOXA accepted response');
-      
+
       // Update approval in database
       const { error: updateError } = await supabase
         .from('hitl_approval_requests')
@@ -322,19 +338,20 @@ router.post('/:requestId/respond', requireDoctorAuth, async (req, res) => {
           answered_at: new Date().toISOString(),
         })
         .eq('id', approval.id);
-      
+
       if (updateError) {
         console.error('Failed to update approval status:', updateError);
       }
-      
-      // Update referral status if applicable
+
+      // Update referral status if applicable — only an explicit approval
+      // closes it; rejection/escalation/ambiguous responses stay open.
       if (approval.referral_id) {
         await supabase
           .from('referrals')
-          .update({ status: 'completed' })
+          .update({ status: isApproved ? 'completed' : 'accepted' })
           .eq('id', approval.referral_id);
       }
-      
+
       // Update tracker if applicable
       if (approval.workflow_run_id) {
         const { data: tracker } = await supabase
@@ -342,36 +359,78 @@ router.post('/:requestId/respond', requireDoctorAuth, async (req, res) => {
           .select('*')
           .eq('workflow_run_id', approval.workflow_run_id)
           .single();
-        
+
         if (tracker) {
+          // Approval alone isn't closure — the workflow contract requires
+          // confirmed EHR save (and patient-delivery) evidence before the
+          // stage is really "done". Sign-off just unblocks archival;
+          // ehr-documentreference-save is what actually completes this
+          // stage and the referral (see yoxa.js).
+          const stageNotes = isApproved
+            ? 'Doctor sign-off received — generating summary and archiving to EHR next'
+            : decision === 'rejected'
+              ? 'Doctor rejected completion — referral remains open'
+              : decision === 'escalated'
+                ? 'Doctor escalated for review — referral remains open'
+                : `Doctor responded without a recognized decision (${overrideMessage || selectedOptionId}) — referral remains open`;
+
           const updatedStages = tracker.stages.map((stage) => {
             if (stage.stage === 'completion_and_archive') {
               return {
                 ...stage,
-                status: 'completed',
-                completedAt: new Date().toISOString(),
-                notes: 'Doctor sign-off received',
+                status: isApproved ? 'in_progress' : 'requires_attention',
+                notes: stageNotes,
+                agentActions: [
+                  ...(stage.agentActions || []),
+                  {
+                    id: `action-${Date.now()}-signoff`,
+                    toolName: 'doctor_completion_signoff_approval',
+                    timestamp: new Date().toISOString(),
+                    status: isApproved ? 'success' : 'failed',
+                    description: 'Doctor completion sign-off decision recorded',
+                    result: decision || 'unrecognized',
+                  },
+                ],
               };
             }
             return stage;
           });
-          
+
           await supabase
             .from('flight_trackers')
             .update({
               stages: updatedStages,
-              signed_off_by: userId,
-              signed_off_at: new Date().toISOString(),
-              completed_at: new Date().toISOString(),
+              signed_off_by: isApproved ? userId : null,
+              signed_off_at: isApproved ? new Date().toISOString() : null,
             })
             .eq('id', tracker.id);
+
+          // A rejection or escalation still needs a human — send it to
+          // whichever coordinators are on staff instead of just closing
+          // the loop silently.
+          if (!isApproved) {
+            const { data: coordinators } = await supabase.from('users').select('id').eq('role', 'coordinator');
+            for (const c of coordinators || []) {
+              await supabase.from('notifications').insert({
+                user_id: c.id,
+                type: 'alert',
+                title: `Sign-off ${decision || 'response'} needs review`,
+                message: `Doctor ${decision === 'rejected' ? 'rejected' : 'escalated'} completion sign-off for referral. Follow up required.`,
+                referral_id: approval.referral_id,
+              });
+            }
+          }
         }
       }
-      
+
       res.json({
         success: true,
         alreadyAnswered: yoxaResult.alreadyAnswered,
-        message: 'Response sent to YOXA. Workflow will resume.',
+        decision,
+        referralClosed: isApproved,
+        message: isApproved
+          ? 'Response sent to YOXA. Workflow will resume and referral will close.'
+          : 'Response sent to YOXA. Referral remains open pending follow-up.',
       });
       
     } catch (yoxaError) {

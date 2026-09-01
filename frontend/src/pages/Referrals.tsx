@@ -26,6 +26,7 @@ const Referrals: React.FC = () => {
   const [loadFailed, setLoadFailed] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [escalatingId, setEscalatingId] = useState<string | null>(null);
+  const [updatingUrgencyId, setUpdatingUrgencyId] = useState<string | null>(null);
 
   useEffect(() => { loadReferrals(); }, []);
 
@@ -46,6 +47,22 @@ const Referrals: React.FC = () => {
     setRetrying(true);
     await loadReferrals();
     setRetrying(false);
+  };
+
+  const handleUrgencyChange = async (referralId: string, newUrgency: Referral['urgency']) => {
+    const previous = referrals;
+    setReferrals((rs) => rs.map((r) => (r.id === referralId ? { ...r, urgency: newUrgency } : r)));
+    setUpdatingUrgencyId(referralId);
+    try {
+      const updated = await referralsAPI.update(referralId, { urgency: newUrgency });
+      setReferrals((rs) => rs.map((r) => (r.id === referralId ? { ...r, ...updated } : r)));
+      success('Urgency updated', `SLA deadline recalculated for the new urgency.`);
+    } catch {
+      setReferrals(previous);
+      showError('Couldn’t update urgency', 'Please try again.');
+    } finally {
+      setUpdatingUrgencyId(null);
+    }
   };
 
   const handleEscalateCoverage = async (referralId: string) => {
@@ -120,7 +137,18 @@ const Referrals: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`neu-badge ${urgencyColor(ref.urgency)}`}>{ref.urgency}</span>
+                  <select
+                    value={ref.urgency}
+                    disabled={updatingUrgencyId === ref.id || ['completed', 'archived', 'denied'].includes(ref.status)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => { e.stopPropagation(); handleUrgencyChange(ref.id, e.target.value as Referral['urgency']); }}
+                    className={`neu-badge ${urgencyColor(ref.urgency)} cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 border-0`}
+                    title="Change urgency — recalculates the SLA deadline and notifies the specialist"
+                  >
+                    <option value="Routine">Routine</option>
+                    <option value="Urgent">Urgent</option>
+                    <option value="Emergency">Emergency</option>
+                  </select>
                   <span className={`neu-badge capitalize ${statusColor(ref.status)}`}>{ref.status}</span>
                   {coverageBadge(ref.coverageStatus)}
                 </div>

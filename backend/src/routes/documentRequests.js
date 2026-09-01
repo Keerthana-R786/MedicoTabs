@@ -2,6 +2,7 @@ import express from 'express';
 import { supabase } from '../config/database.js';
 import { requireDoctorAuth } from '../middleware/doctorAuth.js';
 import { advanceTrackerStage, buildAgentAction } from '../utils/trackerStages.js';
+import { sendEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 router.use(requireDoctorAuth);
@@ -54,10 +55,26 @@ router.post('/referrals/:id/document-requests', async (req, res) => {
       referral_id: referral.id,
     });
 
+    const { data: primaryDoctor } = await supabase
+      .from('users')
+      .select('email, first_name')
+      .eq('id', referral.primary_doctor_id)
+      .maybeSingle();
+
+    const emailResult = await sendEmail({
+      to: primaryDoctor?.email,
+      subject: `Documents requested for referral ${referral.referral_number}`,
+      html: `<p>Hi Dr. ${primaryDoctor?.first_name || ''},</p>
+        <p><strong>${requesterName}</strong> requested the following document(s) for referral <strong>${referral.referral_number}</strong> (${referral.patient_name}):</p>
+        <ul>${cleanItems.map((i) => `<li>${i}</li>`).join('')}</ul>
+        ${note ? `<p>Note: ${note}</p>` : ''}
+        <p>Please upload these to the patient's chart in MedicoTabs.</p>`,
+    });
+
     await advanceTrackerStage(referral.tracker_id, 'acceptance_and_records', {
       agentAction: buildAgentAction('document_request_notice', {
         description: `${requesterName} requested: ${cleanItems.join(', ')}`,
-        result: 'Sent to primary doctor',
+        result: emailResult.sent ? 'Emailed to primary doctor' : `Sent in-app (email skipped: ${emailResult.reason})`,
       }),
     });
 

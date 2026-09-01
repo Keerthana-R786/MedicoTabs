@@ -127,10 +127,6 @@ app.post('/api/yoxa-verify', async (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/patients', patientsRouter);
 app.use('/api/referrals', referralsRouter);
-// Document requests span both /api/referrals/:id/document-requests and
-// /api/patients/:patientId/document-requests — mounted at the shared /api
-// root rather than under one specific resource router.
-app.use('/api', documentRequestsRouter);
 app.use('/api/trackers', trackersRouter);
 app.use('/api/hitl', hitlRouter);
 // YOXA tool endpoints - called back by YOXA agents during workflow runs
@@ -143,6 +139,16 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/doctors', doctorsRouter);
 app.use('/api/messages', messagesRouter);
+// Document requests span both /api/referrals/:id/document-requests and
+// /api/patients/:patientId/document-requests — mounted at the shared /api
+// root rather than under one specific resource router. It MUST be
+// registered last among /api/* mounts: Express matches routers by
+// registration order, and this router's blanket requireDoctorAuth
+// middleware has no path filter, so mounting it earlier silently
+// intercepted every request under every /api/* router registered after
+// it (notably /api/yoxa/* — YOXA's shared-secret tool calls aren't a
+// doctor JWT, so they got rejected 401 before ever reaching yoxaAuth).
+app.use('/api', documentRequestsRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
